@@ -1,7 +1,6 @@
 'use strict';
 
 let d3 = require('d3');
-console.log(d3);
 
 let View = function(controller, svg, module) {
   svg = d3.select('svg')
