@@ -1,0 +1,17 @@
+{
+  "name": "runway-model-micronomy",
+  "version": "0.0.1",
+  "description": "A pathetic and humoristic simplistic model of a financial system",
+  "keywords": [
+    "runway"
+  ],
+  "author": "David Asabina <vid@bina.me>",
+  "license": "MIT",
+  "models": {
+    "main": {
+      "name": "Micronomy",
+      "spec": "micronomy.model",
+      "view": "micronomy.js"
+    }
+  }
+}

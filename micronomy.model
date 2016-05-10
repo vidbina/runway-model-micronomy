@@ -1,0 +1,14 @@
+/*
+ * Micronomy takes a stab at modelling a financial system in a manner that is
+ * probably highly inaccurate and exaggerated.
+ *
+ * Company has operations and has a certain burn rate. This burn rate may be
+ * more than the company produces, which will require the company to get its
+ * resources elsewhere in order to sustain its operations.
+ *
+ * Party's have capital and may lend or loan capital to other parties. When
+ * lending or loaning, a party is registered into the ledger and interest is
+ * calculated on every term.
+ */
+
+type Party: record { capital: 0..1000 }
