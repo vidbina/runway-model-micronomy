@@ -38,6 +38,7 @@ let View = function(controller, svg, module) {
         .attr('r', r)
         .attr('cx', rect.width/2)
         .attr('cy', rect.height/2);
+
     }
   });
 };
