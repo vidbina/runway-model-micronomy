@@ -16,5 +16,5 @@ type Party: record { capital: 0..1000 }
 var age : 0..100;
 
 rule tick {
-  age = age+1;
+  age = (age + 1) % 101;
 }
