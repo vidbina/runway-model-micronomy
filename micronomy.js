@@ -23,18 +23,20 @@ let View = function(controller, svg, module) {
   });
 };
 
+// Classes
 class Actor {
   constructor(groupID) {
     let svg = d3.select('svg');
 
     this.r = 1;
     this.expand = true;
+    this._uuid = `uuid${uuid()}`;
 
     // NOTE: Somehow rect here is inaccurate but a resize call is made right
     // after initialization
-    d3.select(groupID)
+    let node = d3.select(groupID)
       .append('circle')
-        .attr('id', 'firstCircle')
+        .attr('id', this.uuid)
         .attr('r', this.r)
   }
 
@@ -56,6 +58,24 @@ class Actor {
       .attr('cx', rect.width/2)
       .attr('cy', rect.height/2);
   }
+
+  get uuid() {
+    return this._uuid;
+  }
+
+  get node() {
+    return d3.select(`#${this.uuid}`).node();
+  }
 }
+
+// Helpers
+const uuid = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+    /[xy]/g,
+    function(c) {
+      var r = Math.random()*16|0,v=c=='x'?r:r&0x3|0x8;return v.toString(16);
+    }
+  );
+};
 
 module.exports = View;
