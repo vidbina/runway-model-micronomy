@@ -9,37 +9,53 @@ let View = function(controller, svg, module) {
 
   svg.append('g').attr('id', 'experiment');
 
-  let r = 1;
-  let expand = true;
-
-  d3.select('#experiment')
-    .append('circle')
-      .attr('id', 'firstCircle')
-      .attr('r', 1)
-      .attr('fill', 'black')
-      .attr('cx', 100)
-      .attr('cy', 100);
+  let actors = [
+    new Actor('#experiment'),
+  ];
 
   return({
     wideView: true,
     update: () => {
-      if(r > 100) { expand = false; }
-      if(r < 10) { expand = true; }
-
-      if(expand) {
-        r = r + 1;
-      } else {
-        r = r - 1;
+      for(var actor of actors) {
+        actor.update();
       }
-
-      const rect = svg.node().viewBox.baseVal;
-      d3.select('#experiment').select('circle')
-        .attr('r', r)
-        .attr('cx', rect.width/2)
-        .attr('cy', rect.height/2);
-
     }
   });
 };
+
+class Actor {
+  constructor(groupID) {
+    let svg = d3.select('svg');
+
+    this.r = 1;
+    this.expand = true;
+
+    // NOTE: Somehow rect here is inaccurate but a resize call is made right
+    // after initialization
+    d3.select(groupID)
+      .append('circle')
+        .attr('id', 'firstCircle')
+        .attr('r', this.r)
+  }
+
+  update() {
+    if(this.r > 100) { this.expand = false; }
+    if(this.r < 10) { this.expand = true; }
+
+    if(this.expand) {
+      this.r = this.r + 1;
+    } else {
+      this.r = this.r - 1;
+    }
+
+    let svg = d3.select('svg');
+    const rect = svg.node().viewBox.baseVal;
+
+    d3.select('#experiment').select('circle')
+      .attr('r', this.r)
+      .attr('cx', rect.width/2)
+      .attr('cy', rect.height/2);
+  }
+}
 
 module.exports = View;
