@@ -3,15 +3,15 @@
 let d3 = require('d3');
 
 let View = function(controller, svg, module) {
-	let [width, height] = [200, 200];
+  let [width, height] = [200, 200];
 
   svg = d3.select('svg')
     .attr('preserveAspectRatio', 'xMinYMin meet')
     .attr('width', width)
     .attr('height', height)
-		.style({
-			'border': '1px solid black',
-		})
+    .style({
+      'border': '1px solid black',
+    })
     .classed('micronomy', true);
 
   svg.append('g').attr('id', 'experiment');
@@ -23,16 +23,20 @@ let View = function(controller, svg, module) {
 
   let nodes = [{}, {}, {}, {}, {}, {}, {}, {}];
   let links = [
-		{source: 0, target: 1},
-		{source: 1, target: 2},
-		{source: 0, target: 3},
-		{source: 0, target: 4},
-		{source: 5, target: 4},
-		{source: 6, target: 4},
-	];
+    {source: 0, target: 1},
+    {source: 1, target: 2},
+    {source: 0, target: 3},
+    {source: 0, target: 4},
+    {source: 5, target: 4},
+    {source: 6, target: 4},
+  ];
 
-	let node_size = floor(width, height)/(nodes.length*5);
-	let edge_size = node_size*3;
+  let messages = [
+    {link: 0, progress: 0.5},
+  ];
+
+  let node_size = floor(width, height)/(nodes.length*5);
+  let edge_size = node_size*3;
 
   let force = d3.layout.force()
     .size([width/2, height/2])
@@ -59,8 +63,25 @@ let View = function(controller, svg, module) {
       'stroke': '#fff',
       'stroke-width': '1px',
     })
-		.call(force.drag);
+    .call(force.drag);
 
+  let message = svg.selectAll('.messages')
+    .data(messages)
+    .enter().append('circle')
+    .attr('r', node_size*2/3)
+    .style({
+      'fill': '#5ac8fa',
+    });
+
+  /*
+  console.log("link", link);
+  console.log("data", link.data());
+  for(var x in link.data()) { console.log("x", x); };
+  console.log("data[0]", link.data());
+  console.log("data", link.data());
+  console.log("datum", link.datum());
+  console.log(messages[0], link, node)
+  */
 
   force.on('tick', () => {
     node
@@ -68,11 +89,22 @@ let View = function(controller, svg, module) {
       .attr('cy', function(d) { return d.y; });
 
     link
-			.attr('x1', function(d) { return d.source.x; })
+      .attr('x1', function(d) { return d.source.x; })
       .attr('y1', function(d) { return d.source.y; })
       .attr('x2', function(d) { return d.target.x; })
       .attr('y2', function(d) { return d.target.y; });
 
+    message
+      .attr('cx', function(d) {
+        let _l = link.data()[d.link];
+        let _x = _l.source.x + (_l.target.x - _l.source.x)*d.progress
+        return(_x);
+      })
+      .attr('cy', function(d) {
+        let _l = link.data()[d.link];
+        let _y = _l.source.y + (_l.target.y - _l.source.y)*d.progress;
+        return(_y);
+      });
     console.log('.');
   });
 
@@ -149,10 +181,10 @@ const uuid = () => {
 };
 
 const floor = (a, b) => {
-	if(a < b) {
-		return a;
-	}
-	return b;
+  if(a < b) {
+    return a;
+  }
+  return b;
 };
 
 module.exports = View;
