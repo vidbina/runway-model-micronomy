@@ -3,15 +3,80 @@
 let d3 = require('d3');
 
 let View = function(controller, svg, module) {
+	let [width, height] = [200, 200];
+
   svg = d3.select('svg')
     .attr('preserveAspectRatio', 'xMinYMin meet')
+    .attr('width', width)
+    .attr('height', height)
+		.style({
+			'border': '1px solid black',
+		})
     .classed('micronomy', true);
 
   svg.append('g').attr('id', 'experiment');
 
   let actors = [
-    new Actor('#experiment'),
+    new DummyActor('#experiment'),
+    new DummyActor('#experiment'),
   ];
+
+  let nodes = [{}, {}, {}, {}, {}, {}, {}, {}];
+  let links = [
+		{source: 0, target: 1},
+		{source: 1, target: 2},
+		{source: 0, target: 3},
+		{source: 0, target: 4},
+		{source: 5, target: 4},
+		{source: 6, target: 4},
+	];
+
+	let node_size = floor(width, height)/(nodes.length*5);
+	let edge_size = node_size*3;
+
+  let force = d3.layout.force()
+    .size([width/2, height/2])
+    .nodes(nodes)
+    .links(links)
+    .linkDistance(edge_size);
+
+  let link = svg.selectAll('.link')
+    .data(links)
+    .enter().append('line')
+    .attr('class', 'edge')
+    .style({
+      'stroke': 'black',
+      'stroke-width': '1px',
+    });
+
+  let node = svg.selectAll('.node')
+    .data(nodes)
+    .enter().append('circle')
+    .attr('class', 'node')
+    .attr('r', node_size)
+    .style({
+      'fill': '#ccc',
+      'stroke': '#fff',
+      'stroke-width': '1px',
+    })
+		.call(force.drag);
+
+
+  force.on('tick', () => {
+    node
+      .attr('cx', function(d) { return d.x; })
+      .attr('cy', function(d) { return d.y; });
+
+    link
+			.attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+
+    console.log('.');
+  });
+
+  force.start();
 
   return({
     wideView: true,
@@ -23,14 +88,27 @@ let View = function(controller, svg, module) {
   });
 };
 
-// Classes
+// Actors should append an item to the container identified by `groupID` and
+// update this element during the update call.
 class Actor {
   constructor(groupID) {
-    let svg = d3.select('svg');
+    this._uuid = `uuid${uuid()}`;
+  }
 
+  get uuid() {
+    return this._uuid;
+  }
+
+  get node() {
+    return d3.select(`#${this.uuid}`).node();
+  }
+}
+
+class DummyActor extends Actor {
+  constructor(groupID) {
+    super(groupID);
     this.r = 1;
     this.expand = true;
-    this._uuid = `uuid${uuid()}`;
 
     // NOTE: Somehow rect here is inaccurate but a resize call is made right
     // after initialization
@@ -54,17 +132,9 @@ class Actor {
     const rect = svg.node().viewBox.baseVal;
 
     d3.select('#experiment').select('circle')
-      .attr('r', this.r)
-      .attr('cx', rect.width/2)
-      .attr('cy', rect.height/2);
-  }
-
-  get uuid() {
-    return this._uuid;
-  }
-
-  get node() {
-    return d3.select(`#${this.uuid}`).node();
+      .attr('r', this.r);
+      //.attr('cx', rect.width/2)
+      //.attr('cy', rect.height/2);
   }
 }
 
@@ -76,6 +146,13 @@ const uuid = () => {
       var r = Math.random()*16|0,v=c=='x'?r:r&0x3|0x8;return v.toString(16);
     }
   );
+};
+
+const floor = (a, b) => {
+	if(a < b) {
+		return a;
+	}
+	return b;
 };
 
 module.exports = View;
