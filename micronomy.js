@@ -2,6 +2,23 @@
 
 let d3 = require('d3');
 
+const style = {
+  message: {
+    fill: '#5ac8fa',
+    opacity: 0.5,
+    'pointer-events': 'none', // prevents messages from block clicks on nodes
+  },
+  node: {
+    fill: '#ccc',
+    stroke: '#000',
+    'stroke-width': '1px'
+  },
+  link: {
+    stroke: 'black',
+    'stroke-width': '1px'
+  }
+};
+
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
 
@@ -33,6 +50,9 @@ let View = function(controller, svg, module) {
 
   let messages = [
     {link: 0, progress: 0.5},
+    {link: 2, progress: 0},
+    {link: 4, progress: 0.5},
+    {link: 4, progress: 1},
   ];
 
   let node_size = floor(width, height)/(nodes.length*5);
@@ -48,30 +68,21 @@ let View = function(controller, svg, module) {
     .data(links)
     .enter().append('line')
     .attr('class', 'edge')
-    .style({
-      'stroke': 'black',
-      'stroke-width': '1px',
-    });
+    .style(style.link);
 
   let node = svg.selectAll('.node')
     .data(nodes)
     .enter().append('circle')
     .attr('class', 'node')
     .attr('r', node_size)
-    .style({
-      'fill': '#ccc',
-      'stroke': '#fff',
-      'stroke-width': '1px',
-    })
+    .style(style.node)
     .call(force.drag);
 
   let message = svg.selectAll('.messages')
     .data(messages)
     .enter().append('circle')
     .attr('r', node_size*2/3)
-    .style({
-      'fill': '#5ac8fa',
-    });
+    .style(style.message);
 
   /*
   console.log("link", link);
