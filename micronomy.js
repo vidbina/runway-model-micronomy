@@ -38,7 +38,11 @@ let View = function(controller, svg, module) {
     new DummyActor('#experiment'),
   ];
 
+  let model = module.env;
   let nodes = [{}, {}, {}, {}, {}, {}, {}, {}];
+  console.log("   nodes", nodes);
+  let simnodes = _nodes(model);
+  console.log("simnodes", simnodes);
   let links = [
     {source: 0, target: 1},
     {source: 1, target: 2},
@@ -49,10 +53,10 @@ let View = function(controller, svg, module) {
   ];
 
   let messages = [
-    {link: 0, progress: 0.5},
-    {link: 2, progress: 0},
-    {link: 4, progress: 0.5},
-    {link: 4, progress: 1},
+    {id: 0, link: 0, progress: 0.5, dir: true, col: 0},
+    {id: 1, link: 2, progress: 0, dir: true, col: 0},
+    {id: 2, link: 4, progress: 0.5, dir: true, col: 0},
+    {id: 3, link: 4, progress: 1, dir: true, col: 0},
   ];
 
   let node_size = floor(width, height)/(nodes.length*5);
@@ -97,7 +101,8 @@ let View = function(controller, svg, module) {
   force.on('tick', () => {
     node
       .attr('cx', function(d) { return d.x; })
-      .attr('cy', function(d) { return d.y; });
+      .attr('cy', function(d) { return d.y; })
+      .style('fill', function(d) { return d3.rgb(255-d.y*255/200, (d.x)*255/200, 255-d.x*255/200).toString(); });
 
     link
       .attr('x1', function(d) { return d.source.x; })
@@ -107,6 +112,16 @@ let View = function(controller, svg, module) {
 
     message
       .attr('cx', function(d) {
+        if (messages[d.id].dir == true) {
+          if(messages[d.id].progress >= 1) { messages[d.id].dir = false }
+          messages[d.id].progress = messages[d.id].progress+0.1
+        } else {
+          if(messages[d.id].progress <= 0) { 
+            messages[d.id].dir = true;
+            messages[d.id].col = d3.rgb(Math.random()*255, Math.random()*255, Math.random()*255).toString();
+          }
+          messages[d.id].progress = messages[d.id].progress-0.1
+        }
         let _l = link.data()[d.link];
         let _x = _l.source.x + (_l.target.x - _l.source.x)*d.progress
         return(_x);
@@ -115,6 +130,9 @@ let View = function(controller, svg, module) {
         let _l = link.data()[d.link];
         let _y = _l.source.y + (_l.target.y - _l.source.y)*d.progress;
         return(_y);
+      })
+      .style('fill', function(d) {
+        return d.col;
       });
     console.log('.');
   });
@@ -196,6 +214,12 @@ const floor = (a, b) => {
     return a;
   }
   return b;
+};
+
+const _nodes = (model) => {
+  return model.vars.get('parties').toJSON().map(x => {
+    return {}; // id: x[0] };
+  });
 };
 
 module.exports = View;
