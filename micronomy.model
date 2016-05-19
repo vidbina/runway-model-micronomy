@@ -11,10 +11,52 @@
  * calculated on every term.
  */
 
-type Party: record { capital: 0..1000 }
+type Capital: 0..1000;
+type Party: record { capital: Capital };
 
 var age : 0..100;
 
 rule tick {
   age = (age + 1) % 101;
 }
+
+// scene
+type PartyIndex: 0..10;
+type Relationship: record{ parent: PartyIndex, child: PartyIndex };
+
+var parties: Vector<Party>[PartyIndex];
+
+rule spontaneouslySpawnParties {
+  match (age % 10 == 5) {
+    True {
+      var _partySize: Array<Boolean>[PartyIndex];
+      if(size(parties) < size(_partySize)) {
+        push(parties, Party{capital: urandom<Capital>()});
+      }
+    }
+    False {}
+  }
+}
+
+rule spontaneouslyRemoveParties {
+  match (age % 10 == 3) {
+    True {
+      if size(parties) > 0 {
+        remove(parties, parties[urandomRange(0, size(parties)-1)]);
+      }
+    }
+    False {}
+  }
+}
+
+rule resetAfterTime {
+  match(age % 20 == 0) {
+    True {
+      reset;
+    }
+    False {
+    }
+  }
+}
+
+// Set up handlers
