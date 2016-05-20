@@ -128,7 +128,7 @@ let View = function(controller, svg, module) {
   return({
     wideView: true,
     update: () => {
-      _syncNodes(model, 'parties', ['id', 'capital']);
+      _syncNodes(model, 'parties', ['id', 'capital'], _basicExtractor, _basicAdder);
       console.log('nodes', nodes);
       _start();
     }
@@ -154,7 +154,7 @@ const floor = (a, b) => {
 
 let nodes = [];
 let nodesMap = new Map();
-let _isResourceInVizMap = (idx, map) => {
+let _isInViz = (idx, map) => {
   return map.has(idx);
 };
 
@@ -168,16 +168,16 @@ let _basicAdder = (props) => {
   nodes.push(props);
 };
 
-let _addModelResourceToViz = (model, props, extract, add) => {
+let _addToViz = (model, props, extract, add) => {
   nodesMap.set(model.id, extract(model, props));
   add(props);
 };
 
-const _syncNodes = (model, name, props) => {
+const _syncNodes = (model, name, props, extract, add) => {
   return model.vars.get(name).toJSON().map(item => {
     let [idx, model] = item;
-    if(!_isResourceInVizMap(model.id, nodesMap)) {
-      _addModelResourceToViz(model, props, _basicExtractor, _basicAdder);
+    if(!_isInViz(model.id, nodesMap)) {
+      _addToViz(model, props, extract, add);
     }
   });
 };
