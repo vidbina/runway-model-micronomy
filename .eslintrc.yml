@@ -16,6 +16,9 @@ rules:
   linebreak-style:
     - error
     - unix
+  no-trailing-spaces:
+    - error
+    - skipBlankLines: false
   no-unused-vars:
     - error
     - args: none
