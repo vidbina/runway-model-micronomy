@@ -15,6 +15,7 @@ type Capital: 0..1000;
 type Party: record { capital: Capital };
 
 var age : 0..100;
+var tock: 0..100;
 
 rule tick {
   age = (age + 1) % 101;
@@ -56,6 +57,19 @@ rule resetAfterTime {
     }
     False {
     }
+  }
+}
+
+rule addParty {
+  var _partySize: Array<Boolean>[PartyIndex];
+  if size(parties) < size(_partySize) {
+    push(parties, Party{capital: urandom<Capital>()});
+  }
+}
+
+rule removeRandomParty {
+  if size(parties) > 0 {
+    remove(parties, parties[urandomRange(0, size(parties)-1)]);
   }
 }
 
