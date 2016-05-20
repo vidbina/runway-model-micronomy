@@ -11,8 +11,12 @@
  * calculated on every term.
  */
 
+type Id: 111111..999999; // Sloppy alternative for ids
+var nextId: Id;
+var idBlock: Boolean;
+
 type Capital: 0..1000;
-type Party: record { capital: Capital };
+type Party: record { id: Id, capital: Capital };
 
 var age : 0..100;
 var tock: 0..100;
@@ -63,7 +67,7 @@ rule resetAfterTime {
 rule addParty {
   var _partySize: Array<Boolean>[PartyIndex];
   if size(parties) < size(_partySize) {
-    push(parties, Party{capital: urandom<Capital>()});
+    push(parties, Party{id: generateId(), capital: urandom<Capital>()});
   }
 }
 
@@ -71,6 +75,13 @@ rule removeRandomParty {
   if size(parties) > 0 {
     remove(parties, parties[urandomRange(0, size(parties)-1)]);
   }
+}
+
+function generateId() -> Id {
+  var tempId: Id;
+  tempId = nextId;
+  nextId+=1;
+  return tempId;
 }
 
 // Set up handlers
