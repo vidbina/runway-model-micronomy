@@ -75,6 +75,7 @@ let View = function(controller, svg, module) {
       .attr('r', _nodeSize)
       .style(style.node)
       .call(force.drag);
+    node.exit().remove();
     force.start();
   };
 
@@ -128,7 +129,7 @@ let View = function(controller, svg, module) {
   return({
     wideView: true,
     update: () => {
-      _syncNodes(model, 'parties', ['id', 'capital'], _basicExtractor, _basicAdder);
+      _syncNodes(_nodeMapGetter, model, 'parties', ['id', 'capital'], _basicExtractor, _basicAdder, _basicRemover, _syncFormerToCurrent);
       console.log('nodes', nodes);
       _start();
     }
@@ -154,32 +155,74 @@ const floor = (a, b) => {
 
 let nodes = [];
 let nodesMap = new Map();
-let _isInViz = (idx, map) => {
-  return map.has(idx);
+let _nodeMapGetter = () => {
+  return nodesMap;
+};
+
+let _isInViz = (idx, getVizMap) => {
+  console.log(idx, 'in', getVizMap(), 'is', getVizMap().has(idx));
+  return getVizMap().has(idx);
 };
 
 let _basicExtractor = (model, props) => {
+  console.log('model', model);
+  console.log('props', props);
   return props.reduce((acc, val, i, arr) => {
     acc[val] = model[val]; return acc;
   }, {});
 };
 
 let _basicAdder = (props) => {
-  nodes.push(props);
+  console.log('adding props', props);
+  return nodes.push(props);
 };
 
-let _addToViz = (model, props, extract, add) => {
-  nodesMap.set(model.id, extract(model, props));
-  add(props);
+let _basicRemover = (id) => {
+  let removable = nodes.findIndex((el, idx, arr) => {
+    console.log('el is', el, 'id is', id, 'removing', (el.id == id));
+    console.log('idx is', idx);
+    return (el.id == id);
+  });
+  console.log('removable is', removable);
+  console.log('a0', nodes);
+  nodes.splice(removable, 1);
+  console.log('a1', nodes);
 };
 
-const _syncNodes = (model, name, props, extract, add) => {
-  return model.vars.get(name).toJSON().map(item => {
+let _basicRebalancer = (present, alive) => {
+  present.map(present => {
+  });
+};
+
+// TODO: remove `model` from `_addToViz` & `removeFromViz`
+let _addToViz = (model, props, extract, add) => add(extract(model, props));
+let _removeFromViz = (model, props, extract, remove) => remove(extract(model, props).id);
+
+let _syncFormerToCurrent = (present) => {
+  nodesMap.clear();
+  present.forEach((val, key) => {
+    nodesMap.set(key, val);
+  });
+};
+
+const _syncNodes = (past, model, name, props, extract, add, remove, sync) => {
+  let present = new Map(); // TODO: rename to current
+  let newIdxs = model.vars.get(name).toJSON().map(item => {
     let [idx, model] = item;
-    if(!_isInViz(model.id, nodesMap)) {
-      _addToViz(model, props, extract, add);
+    present.set(model.id, extract(model, props));
+    if(!_isInViz(model.id, past)) {
+      return _addToViz(model, props, extract, add);
     }
   });
+
+  console.log('present before removes', present);
+  let voidIdxs = new Map([...past()].filter(([k, v]) => {
+    if(present.has(k)) { return false; }
+    _removeFromViz(v, props, extract, remove);
+    return true;
+  }));
+
+  sync(present);
 };
 
 module.exports = View;
