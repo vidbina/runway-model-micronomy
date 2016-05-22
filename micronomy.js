@@ -38,16 +38,14 @@ let View = function(controller, svg, module) {
   let links = [];
   let messages = [];
 
-  const _nodeSizeCalculator = (_n, ..._y) => {
-    console.log('1', _n, '...n', _y);
-    return 12;
-    //return floor(width, height)/(nodes.length<0?10:nodes.length*5);
+  const _nodeSizeCalculator = (d, i, ..._other) => {
+    return floor(width, height)/(nodes.length<0?8:nodes.length*5);
   };
 
   const _edgeLength = (_e) => {
     console.log(_e);
     return 24;
-    //return _nodeSize()*3;
+    //return _nodeSizeCalculator()*3;
   };
 
   const _messageSize = (_m) => {
@@ -90,7 +88,7 @@ let View = function(controller, svg, module) {
     node
       .attr('cx', function(d) { return d.x; })
       .attr('cy', function(d) { return d.y; })
-      .attr('r', _nodeSize)
+      .attr('r', _nodeSizeCalculator)
       .style('fill', function(d) { return d3.rgb(255-d.y*255/200, (d.x)*255/200, 255-d.x*255/200).toString(); });
 
     link
