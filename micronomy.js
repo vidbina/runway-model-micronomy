@@ -38,7 +38,8 @@ let View = function(controller, svg, module) {
   let links = [];
   let messages = [];
 
-  const _nodeSize = (_n) => {
+  const _nodeSizeCalculator = (_n, ..._y) => {
+    console.log('1', _n, '...n', _y);
     return 12;
     //return floor(width, height)/(nodes.length<0?10:nodes.length*5);
   };
@@ -72,7 +73,7 @@ let View = function(controller, svg, module) {
     node = node.data(force.nodes());
     node.enter().append('circle')
       .attr('class', 'node')
-      .attr('r', _nodeSize)
+      .attr('r', _nodeSizeCalculator)
       .style(style.node)
       .call(force.drag);
     node.exit().remove();
@@ -89,6 +90,7 @@ let View = function(controller, svg, module) {
     node
       .attr('cx', function(d) { return d.x; })
       .attr('cy', function(d) { return d.y; })
+      .attr('r', _nodeSize)
       .style('fill', function(d) { return d3.rgb(255-d.y*255/200, (d.x)*255/200, 255-d.x*255/200).toString(); });
 
     link
@@ -121,7 +123,6 @@ let View = function(controller, svg, module) {
       .style('fill', function(d) {
         return d.col;
       });
-    console.log('.');
   });
 
   force.start();
@@ -130,7 +131,6 @@ let View = function(controller, svg, module) {
     wideView: true,
     update: () => {
       _syncNodes(_nodeMapGetter, model, 'parties', ['id', 'capital'], _basicExtractor, _basicAdder, _basicRemover, _syncFormerToCurrent);
-      console.log('nodes', nodes);
       _start();
     }
   });
@@ -160,33 +160,24 @@ let _nodeMapGetter = () => {
 };
 
 let _isInViz = (idx, getVizMap) => {
-  console.log(idx, 'in', getVizMap(), 'is', getVizMap().has(idx));
   return getVizMap().has(idx);
 };
 
 let _basicExtractor = (model, props) => {
-  console.log('model', model);
-  console.log('props', props);
   return props.reduce((acc, val, i, arr) => {
     acc[val] = model[val]; return acc;
   }, {});
 };
 
 let _basicAdder = (props) => {
-  console.log('adding props', props);
   return nodes.push(props);
 };
 
 let _basicRemover = (id) => {
   let removable = nodes.findIndex((el, idx, arr) => {
-    console.log('el is', el, 'id is', id, 'removing', (el.id == id));
-    console.log('idx is', idx);
     return (el.id == id);
   });
-  console.log('removable is', removable);
-  console.log('a0', nodes);
   nodes.splice(removable, 1);
-  console.log('a1', nodes);
 };
 
 let _basicRebalancer = (present, alive) => {
@@ -215,7 +206,6 @@ const _syncNodes = (past, model, name, props, extract, add, remove, sync) => {
     }
   });
 
-  console.log('present before removes', present);
   let voidIdxs = new Map([...past()].filter(([k, v]) => {
     if(present.has(k)) { return false; }
     _removeFromViz(v, props, extract, remove);
