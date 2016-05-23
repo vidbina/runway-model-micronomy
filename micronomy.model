@@ -16,10 +16,20 @@ var nextId: Id;
 var idBlock: Boolean;
 
 type Capital: 0..1000;
+type Amount: 0..10;
 type Party: record { id: Id, capital: Capital };
 
+// NOTE: only allow general offers (exclusive offers aren't possible)
+type Offer: record { source: Party, amount: Amount, value: Capital };
+type Bid: record { source: Party, amount: Amount, value: Capital };
+
+type LedgerIndex: 0..10;
+type OfferLedgerIndex: LedgerIndex;
+type BidLedgerIndex: LedgerIndex;
+type CurrentOfferLedger: Vector<Offer>[OfferLedgerIndex];
+type CurrentBidLedger: Vector<Bid>[BidLedgerIndex];
+
 var age : 0..100;
-var tock: 0..100;
 
 rule tick {
   age = (age + 1) % 101;
