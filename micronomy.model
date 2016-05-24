@@ -19,6 +19,13 @@ type Capital: 0..1000;
 type Amount: 0..10;
 type Party: record { id: Id, capital: Capital };
 
+// NOTE: currently only supporting parent-child relationships, `equals` is
+// used to indicate equality as in a peer-to-peer relationship.
+type Relationship: record { parent: Party, child: Party, equals: Boolean };
+
+type NetworkIndex: 0..10;
+var network: Vector<Relationship>[NetworkIndex];
+
 // NOTE: only allow general offers (exclusive offers aren't possible)
 type Offer: record { source: Party, amount: Amount, value: Capital };
 type Bid: record { source: Party, amount: Amount, value: Capital };
@@ -26,8 +33,9 @@ type Bid: record { source: Party, amount: Amount, value: Capital };
 type LedgerIndex: 0..10;
 type OfferLedgerIndex: LedgerIndex;
 type BidLedgerIndex: LedgerIndex;
-type CurrentOfferLedger: Vector<Offer>[OfferLedgerIndex];
-type CurrentBidLedger: Vector<Bid>[BidLedgerIndex];
+
+var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
+var currentBidLedger: Vector<Bid>[BidLedgerIndex];
 
 var age : 0..100;
 
@@ -37,7 +45,6 @@ rule tick {
 
 // scene
 type PartyIndex: 0..10;
-type Relationship: record{ parent: PartyIndex, child: PartyIndex };
 
 var parties: Vector<Party>[PartyIndex];
 
@@ -78,6 +85,17 @@ rule addParty {
   var _partySize: Array<Boolean>[PartyIndex];
   if size(parties) < size(_partySize) {
     push(parties, Party{id: generateId(), capital: urandom<Capital>()});
+  }
+}
+
+// TODO: Figure out effective method to remove multiple similar entries
+rule addRelationship {
+  if size(parties) > 1 {
+    var parent : Party = parties[urandomRange(0, size(parties)-1)];
+    var remaining : Vector<Party>[PartyIndex] = parties;
+    remove(remaining, parent);
+    var child : Party = remaining[urandomRange(0, size(remaining)-1)];
+    push(network, Relationship{parent: parent, child: child, equals: False});
   }
 }
 
