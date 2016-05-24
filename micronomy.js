@@ -35,7 +35,6 @@ let View = function(controller, svg, module) {
 
   let model = module.env;
 
-  let links = [];
   let messages = [];
 
   const _nodeSizeCalculator = (d, i, ..._other) => {
@@ -128,7 +127,12 @@ let View = function(controller, svg, module) {
   return({
     wideView: true,
     update: () => {
-      _syncNodes(_nodeMapGetter, model, 'parties', ['id', 'capital'], _basicExtractor, _basicAdder, _basicRemover, _syncFormerToCurrent);
+      _sync(
+        _nodeMapGetter,
+        model, 'parties', ['id', 'capital'],
+        _basicExtractor,
+        _nodeAdder, _nodeRemover,
+        _syncFormerToCurrent);
       _start();
     }
   });
@@ -151,8 +155,9 @@ const floor = (a, b) => {
   return b;
 };
 
-let nodes = [];
-let nodesMap = new Map();
+let [links, linksMap] = [ [], new Map() ];
+let [nodes, nodesMap] = [ [], new Map() ];
+
 let _nodeMapGetter = () => {
   return nodesMap;
 };
@@ -167,11 +172,11 @@ let _basicExtractor = (model, props) => {
   }, {});
 };
 
-let _basicAdder = (props) => {
+let _nodeAdder = (props) => {
   return nodes.push(props);
 };
 
-let _basicRemover = (id) => {
+let _nodeRemover = (id) => {
   let removable = nodes.findIndex((el, idx, arr) => {
     return (el.id == id);
   });
@@ -194,7 +199,7 @@ let _syncFormerToCurrent = (present) => {
   });
 };
 
-const _syncNodes = (past, model, name, props, extract, add, remove, sync) => {
+const _sync = (past, model, name, props, extract, add, remove, sync) => {
   let present = new Map(); // TODO: rename to current
   let newIdxs = model.vars.get(name).toJSON().map(item => {
     let [idx, model] = item;
@@ -209,6 +214,8 @@ const _syncNodes = (past, model, name, props, extract, add, remove, sync) => {
     _removeFromViz(v, props, extract, remove);
     return true;
   }));
+
+  // TODO: do whatever else you need with newIdxs and voidIdxs
 
   sync(present);
 };
