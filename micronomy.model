@@ -99,6 +99,57 @@ rule addRelationship {
   }
 }
 
+var evalParent : Vector<Party>[1..100];
+var evalChild : Vector<Party>[1..100];
+var parentPushed : Vector<Party>[1..100];
+var childPushed : Vector<Party>[1..100];
+var evaluatedRelations : Vector<Relationship>[1..100];
+var missingList: Vector<Boolean>[1..10];
+var missingList2: Vector<Boolean>[1..10];
+var sane : Boolean = False;
+//var Code : 1..100;
+//var log : Vector<Code>[1..100];
+
+rule sanitizeNetwork {
+  for relationId, relation in network {
+    var parentExists : Boolean = contains(parties, relation.parent);
+    var childExists : Boolean = contains(parties, relation.child);
+    var memberMissing : Boolean = !(parentExists && childExists);
+//    push(log, 0);
+    push(missingList, memberMissing);
+
+//    push(log, 2);
+    if memberMissing {
+//      push(log, 3);
+      push(missingList, False);
+      //push(evaluatedRelations, relation);
+      push(missingList2, remove(network, relation));
+//      push(log, 4);
+    }
+    /*
+    if(!contains(parties, relation.parent) || !contains(parties, relation.child)) {
+      push(parentPushed, relation.parent);
+      push(parentPushed, relation.child);
+      remove(network, relation);
+    }
+    push(evalParent, relation.parent);
+    */
+    /*
+    if(!contains(parties, relation.parent)) {
+      push(parentPushed, relation.parent);
+    }
+  
+    push(evalChild, relation.child);
+    if(!contains(parties, relation.child)) {
+      push(childPushed, relation.child);
+    }
+    */
+    //remove(parties, parties[0]);
+    //for relationship in network {
+    //}
+  }
+}
+
 rule removeRandomParty {
   if size(parties) > 0 {
     remove(parties, parties[urandomRange(0, size(parties)-1)]);

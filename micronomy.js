@@ -158,9 +158,7 @@ const floor = (a, b) => {
 let [links, linksMap] = [ [], new Map() ];
 let [nodes, nodesMap] = [ [], new Map() ];
 
-let _nodeMapGetter = () => {
-  return nodesMap;
-};
+let _nodeMapGetter = () => nodesMap;
 
 let _isInViz = (idx, getVizMap) => {
   return getVizMap().has(idx);
