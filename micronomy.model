@@ -107,24 +107,24 @@ var evaluatedRelations : Vector<Relationship>[1..100];
 var missingList: Vector<Boolean>[1..10];
 var missingList2: Vector<Boolean>[1..10];
 var sane : Boolean = False;
-//var Code : 1..100;
-//var log : Vector<Code>[1..100];
+type Code : 1..100;
+var log : Vector<Code>[1..100];
 
 rule sanitizeNetwork {
   for relationId, relation in network {
     var parentExists : Boolean = contains(parties, relation.parent);
     var childExists : Boolean = contains(parties, relation.child);
     var memberMissing : Boolean = !(parentExists && childExists);
-//    push(log, 0);
+    push(log, 0);
     push(missingList, memberMissing);
 
-//    push(log, 2);
+    push(log, 2);
     if memberMissing {
-//      push(log, 3);
+      push(log, 3);
       push(missingList, False);
       //push(evaluatedRelations, relation);
       push(missingList2, remove(network, relation));
-//      push(log, 4);
+      push(log, 4);
     }
     /*
     if(!contains(parties, relation.parent) || !contains(parties, relation.child)) {
