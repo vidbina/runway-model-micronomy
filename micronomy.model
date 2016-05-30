@@ -41,43 +41,68 @@ var testNetwork: Set<Relationship>[0..10];
 //var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
 //var currentBidLedger: Vector<Bid>[BidLedgerIndex];
 
+type Message : either {
+  Init {},
+  AddParty {
+    party: Party,
+  },
+  RemoveParty {
+    party: Party,
+  },
+  AddRelationship {
+    relationship: Relationship,
+  },
+  RemoveRelationship {
+    relationship: Relationship,
+  },
+  Nothing {},
+}
+
 type PartyIndex: 0..10;
 
 var parties: Vector<Party>[PartyIndex];
+var message : Message;
 
-rule addParty {
-  push(loggingVector, 10);
-  var _partySize: Array<Boolean>[PartyIndex];
-  if size(parties) < size(_partySize) {
-    push(loggingVector, 11);
-    push(parties, Party{id: generateId(), capital: urandom<Capital>()});
+rule mutateHierarchy {
+  match message {
+    Init(p) {
+      setupInitialNetwork();
+    }
+    AddParty(p) {
+      push(parties, p.party);
+    }
+    RemoveParty(p) {
+      remove(parties, p.party);
+    }
+    AddRelationship(r) {
+      push(network, r.relationship);
+    }
+    RemoveRelationship(r) {
+      remove(network, r.relationship);
+    }
+    default {}
   }
-  push(loggingVector, 12);
+  message = Nothing {};
 }
-
-invariant validPartyList {
-  
-}
-
-rule connectParties for _parentId, parent in parties for _childId, child in parties {
-  push(loggingVector, 70);
-  push(network, Relationship{ parent: parent, child: child, equals: False });
-  push(loggingVector, 71);
-}
-
-/*
-rule removeParty for _, party in parties {
-  remove(parties, party);
-}
-
-rule removeRelationship for _, relationship in network {
-  remove(network, relationship);
-}
-*/
 
 function generateId() -> Id {
   var tempId: Id;
   tempId = nextId;
   nextId+=1;
   return tempId;
+}
+
+function setupInitialNetwork() {
+  push(parties, Party{id: generateId(), capital: 100});
+  push(parties, Party{id: generateId(), capital:  50});
+  push(parties, Party{id: generateId(), capital: 200});
+  push(parties, Party{id: generateId(), capital: 200});
+  push(parties, Party{id: generateId(), capital: 300});
+  push(parties, Party{id: generateId(), capital:  10});
+
+  push(network, Relationship{parent: parties[0], child: parties[1]});
+  push(network, Relationship{parent: parties[1], child: parties[2]});
+  push(network, Relationship{parent: parties[1], child: parties[3]});
+  push(network, Relationship{parent: parties[0], child: parties[4]});
+  push(network, Relationship{parent: parties[4], child: parties[5]});
 }
