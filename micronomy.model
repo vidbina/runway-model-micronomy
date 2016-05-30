@@ -16,10 +16,8 @@
 type Id: 111111..999999; // Sloppy alternative for ids
 type Capital: 0..1000;
 
-type Relationship: record { id: Id, capital: Capital };
-
 type Code : 1..100;
-var positionVector : Vector<Code>[1..100];
+var loggingVector: Vector<Code>[1..100];
 
 var nextId: Id;
 var idBlock: Boolean;
@@ -27,120 +25,47 @@ var idBlock: Boolean;
 type Amount: 0..10;
 type Party: record { id: Id, capital: Capital };
 
+type Relationship: record { parent: Party, child: Party, equals: Boolean };
+
 type NetworkIndex: 0..10;
 var network: Vector<Relationship>[NetworkIndex];
 var testNetwork: Set<Relationship>[0..10];
 
-// NOTE: only allow general offers (exclusive offers aren't possible)
-type Offer: record { source: Party, amount: Amount, value: Capital };
-type Bid: record { source: Party, amount: Amount, value: Capital };
+//type Offer: record { source: Party, amount: Amount, value: Capital };
+//type Bid: record { source: Party, amount: Amount, value: Capital };
 
-type LedgerIndex: 0..10;
-type OfferLedgerIndex: LedgerIndex;
-type BidLedgerIndex: LedgerIndex;
+//type LedgerIndex: 0..10;
+//type OfferLedgerIndex: LedgerIndex;
+//type BidLedgerIndex: LedgerIndex;
 
-var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
-var currentBidLedger: Vector<Bid>[BidLedgerIndex];
+//var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
+//var currentBidLedger: Vector<Bid>[BidLedgerIndex];
 
-var age : 0..100;
-
-rule tick {
-  age = (age + 1) % 101;
-}
-
-// scene
 type PartyIndex: 0..10;
 
 var parties: Vector<Party>[PartyIndex];
 
 rule addParty {
-  push(positionVector, 10);
+  push(loggingVector, 10);
   var _partySize: Array<Boolean>[PartyIndex];
   if size(parties) < size(_partySize) {
-    push(positionVector, 11);
+    push(loggingVector, 11);
     push(parties, Party{id: generateId(), capital: urandom<Capital>()});
   }
+  push(loggingVector, 12);
 }
-//
-//// TODO: Figure out effective method to remove multiple similar entries
-//rule addRandomRelationship {
-//  push(positionVector, 60);
-//  if size(parties) > 1 {
-//    push(positionVector, 61);
-//    var parent : Party = parties[urandomRange(0, size(parties)-1)];
-//    var remaining : Vector<Party>[PartyIndex] = parties;
-//    push(positionVector, 62);
-//    remove(remaining, parent);
-//    push(positionVector, 63);
-//    var child : Party = remaining[urandomRange(0, size(remaining)-1)];
-//    //push(network, Relationship{parent: parent, child: child, equals: False});
-//    push(positionVector, 64);
-//  }
-//  push(positionVector, 65);
-//}
+
+invariant validPartyList {
+  
+}
 
 rule connectParties for _parentId, parent in parties for _childId, child in parties {
-  push(positionVector, 70);
-//  push(evalParent, parent);
-//  push(evalChild, child);
-//  push(positionVector, 71);
-  var newRelationship : Relationship;
-  newRelationship = Relationship { id: 22222, capital: 600 };
-//    //child: child,
-//  push(positionVector, 72);
-//  push(testNetwork, newRelationship);
-//  push(positionVector, 73);
+  push(loggingVector, 70);
+  push(network, Relationship{ parent: parent, child: child, equals: False });
+  push(loggingVector, 71);
 }
 
-var evalParent : Vector<Party>[1..100];
-var evalChild : Vector<Party>[1..100];
-var parentPushed : Vector<Party>[1..100];
-var childPushed : Vector<Party>[1..100];
-var evaluatedRelations : Vector<Relationship>[1..100];
-var missingList: Vector<Boolean>[1..10];
-var missingList2: Vector<Boolean>[1..10];
-var sane : Boolean = False;
-
-// events starting at 20
-rule sanitizeNetwork for relationId, relationship in network {
-  push(positionVector, 20);
-  //var parentExists : Boolean = contains(parties, relationship.parent);
-  //var childExists : Boolean = contains(parties, relationship.child);
-  var memberMissing : Boolean = False; //!(parentExists && childExists);
-  push(missingList, memberMissing);
-
-  if memberMissing {
-    push(positionVector, 22);
-    push(missingList, False);
-    //push(evaluatedRelations, relation);
-    push(missingList2, remove(network, relationship));
-    push(positionVector, 23);
-  }
-  push(positionVector, 24);
-  /*
-  if(!contains(parties, relation.parent) || !contains(parties, relation.child)) {
-    push(parentPushed, relation.parent);
-    push(parentPushed, relation.child);
-    remove(network, relation);
-  }
-  push(evalParent, relation.parent);
-  */
-  /*
-  if(!contains(parties, relation.parent)) {
-    push(parentPushed, relation.parent);
-  }
-
-  push(evalChild, relation.child);
-  if(!contains(parties, relation.child)) {
-    push(childPushed, relation.child);
-  }
-  */
-  //remove(parties, parties[0]);
-  //for relationship in network {
-  //}
-}
-
-// class 30
+/*
 rule removeParty for _, party in parties {
   remove(parties, party);
 }
@@ -148,6 +73,7 @@ rule removeParty for _, party in parties {
 rule removeRelationship for _, relationship in network {
   remove(network, relationship);
 }
+*/
 
 function generateId() -> Id {
   var tempId: Id;
@@ -155,5 +81,3 @@ function generateId() -> Id {
   nextId+=1;
   return tempId;
 }
-
-// Set up handlers
