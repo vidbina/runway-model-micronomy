@@ -133,6 +133,14 @@ let View = function(controller, svg, module) {
         _basicExtractor,
         _nodeAdder, _nodeRemover,
         _syncFormerToCurrent);
+
+      _sync(
+        _nodeMapGetter,
+        model, 'network', ['parent', 'child'],
+        _basicExtractor,
+        _nodeAdder, _nodeRemover,
+        _syncFormerToCurrent);
+
       _start();
     }
   });
