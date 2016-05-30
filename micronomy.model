@@ -11,20 +11,25 @@
  * calculated on every term.
  */
 
+// NOTE: currently only supporting parent-child relationships, `equals` is
+// used to indicate equality as in a peer-to-peer relationship.
 type Id: 111111..999999; // Sloppy alternative for ids
+type Capital: 0..1000;
+
+type Relationship: record { id: Id, capital: Capital };
+
+type Code : 1..100;
+var positionVector : Vector<Code>[1..100];
+
 var nextId: Id;
 var idBlock: Boolean;
 
-type Capital: 0..1000;
 type Amount: 0..10;
 type Party: record { id: Id, capital: Capital };
 
-// NOTE: currently only supporting parent-child relationships, `equals` is
-// used to indicate equality as in a peer-to-peer relationship.
-type Relationship: record { parent: Party, child: Party, equals: Boolean };
-
 type NetworkIndex: 0..10;
 var network: Vector<Relationship>[NetworkIndex];
+var testNetwork: Set<Relationship>[0..10];
 
 // NOTE: only allow general offers (exclusive offers aren't possible)
 type Offer: record { source: Party, amount: Amount, value: Capital };
@@ -48,55 +53,43 @@ type PartyIndex: 0..10;
 
 var parties: Vector<Party>[PartyIndex];
 
-rule spontaneouslySpawnParties {
-  match (age % 10 == 5) {
-    True {
-      var _partySize: Array<Boolean>[PartyIndex];
-      if(size(parties) < size(_partySize)) {
-        push(parties, Party{capital: urandom<Capital>()});
-      }
-    }
-    False {}
-  }
-}
-
-rule spontaneouslyRemoveParties {
-  match (age % 10 == 3) {
-    True {
-      if size(parties) > 0 {
-        remove(parties, parties[urandomRange(0, size(parties)-1)]);
-      }
-    }
-    False {}
-  }
-}
-
-rule resetAfterTime {
-  match(age % 20 == 0) {
-    True {
-      reset;
-    }
-    False {
-    }
-  }
-}
-
 rule addParty {
+  push(positionVector, 10);
   var _partySize: Array<Boolean>[PartyIndex];
   if size(parties) < size(_partySize) {
+    push(positionVector, 11);
     push(parties, Party{id: generateId(), capital: urandom<Capital>()});
   }
 }
+//
+//// TODO: Figure out effective method to remove multiple similar entries
+//rule addRandomRelationship {
+//  push(positionVector, 60);
+//  if size(parties) > 1 {
+//    push(positionVector, 61);
+//    var parent : Party = parties[urandomRange(0, size(parties)-1)];
+//    var remaining : Vector<Party>[PartyIndex] = parties;
+//    push(positionVector, 62);
+//    remove(remaining, parent);
+//    push(positionVector, 63);
+//    var child : Party = remaining[urandomRange(0, size(remaining)-1)];
+//    //push(network, Relationship{parent: parent, child: child, equals: False});
+//    push(positionVector, 64);
+//  }
+//  push(positionVector, 65);
+//}
 
-// TODO: Figure out effective method to remove multiple similar entries
-rule addRelationship {
-  if size(parties) > 1 {
-    var parent : Party = parties[urandomRange(0, size(parties)-1)];
-    var remaining : Vector<Party>[PartyIndex] = parties;
-    remove(remaining, parent);
-    var child : Party = remaining[urandomRange(0, size(remaining)-1)];
-    push(network, Relationship{parent: parent, child: child, equals: False});
-  }
+rule connectParties for _parentId, parent in parties for _childId, child in parties {
+  push(positionVector, 70);
+//  push(evalParent, parent);
+//  push(evalChild, child);
+//  push(positionVector, 71);
+  var newRelationship : Relationship;
+  newRelationship = Relationship { id: 22222, capital: 600 };
+//    //child: child,
+//  push(positionVector, 72);
+//  push(testNetwork, newRelationship);
+//  push(positionVector, 73);
 }
 
 var evalParent : Vector<Party>[1..100];
@@ -107,53 +100,53 @@ var evaluatedRelations : Vector<Relationship>[1..100];
 var missingList: Vector<Boolean>[1..10];
 var missingList2: Vector<Boolean>[1..10];
 var sane : Boolean = False;
-type Code : 1..100;
-var log : Vector<Code>[1..100];
 
-rule sanitizeNetwork {
-  for relationId, relation in network {
-    var parentExists : Boolean = contains(parties, relation.parent);
-    var childExists : Boolean = contains(parties, relation.child);
-    var memberMissing : Boolean = !(parentExists && childExists);
-    push(log, 0);
-    push(missingList, memberMissing);
+// events starting at 20
+rule sanitizeNetwork for relationId, relationship in network {
+  push(positionVector, 20);
+  //var parentExists : Boolean = contains(parties, relationship.parent);
+  //var childExists : Boolean = contains(parties, relationship.child);
+  var memberMissing : Boolean = False; //!(parentExists && childExists);
+  push(missingList, memberMissing);
 
-    push(log, 2);
-    if memberMissing {
-      push(log, 3);
-      push(missingList, False);
-      //push(evaluatedRelations, relation);
-      push(missingList2, remove(network, relation));
-      push(log, 4);
-    }
-    /*
-    if(!contains(parties, relation.parent) || !contains(parties, relation.child)) {
-      push(parentPushed, relation.parent);
-      push(parentPushed, relation.child);
-      remove(network, relation);
-    }
-    push(evalParent, relation.parent);
-    */
-    /*
-    if(!contains(parties, relation.parent)) {
-      push(parentPushed, relation.parent);
-    }
-  
-    push(evalChild, relation.child);
-    if(!contains(parties, relation.child)) {
-      push(childPushed, relation.child);
-    }
-    */
-    //remove(parties, parties[0]);
-    //for relationship in network {
-    //}
+  if memberMissing {
+    push(positionVector, 22);
+    push(missingList, False);
+    //push(evaluatedRelations, relation);
+    push(missingList2, remove(network, relationship));
+    push(positionVector, 23);
   }
+  push(positionVector, 24);
+  /*
+  if(!contains(parties, relation.parent) || !contains(parties, relation.child)) {
+    push(parentPushed, relation.parent);
+    push(parentPushed, relation.child);
+    remove(network, relation);
+  }
+  push(evalParent, relation.parent);
+  */
+  /*
+  if(!contains(parties, relation.parent)) {
+    push(parentPushed, relation.parent);
+  }
+
+  push(evalChild, relation.child);
+  if(!contains(parties, relation.child)) {
+    push(childPushed, relation.child);
+  }
+  */
+  //remove(parties, parties[0]);
+  //for relationship in network {
+  //}
 }
 
-rule removeRandomParty {
-  if size(parties) > 0 {
-    remove(parties, parties[urandomRange(0, size(parties)-1)]);
-  }
+// class 30
+rule removeParty for _, party in parties {
+  remove(parties, party);
+}
+
+rule removeRelationship for _, relationship in network {
+  remove(network, relationship);
 }
 
 function generateId() -> Id {
