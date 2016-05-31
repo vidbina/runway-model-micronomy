@@ -93,8 +93,7 @@ rule resolveNearbyOffer for offer in currentOfferLedger {
               if party.capital > offer.value {
                 push(loggingVector, 21);
                 remove(currentOfferLedger, offer);
-                //decreaseCapital(rel.child, offer.value);
-                //increaseCapital(rel.parent, offer.value);
+                moveCapital(rel.parent, rel.child, offer.value);
               }
             }
             default {}
@@ -174,8 +173,52 @@ function generateRelationshipIndex() -> Index {
   return tempIndex;
 }
 
-function changeCapital(id: PartyIndex, amount: Capital) -> Boolean {
-  //
+function moveCapital(from: PartyIndex, to: PartyIndex, amount: Capital) -> Boolean {
+  match manifest[from] {
+    Existing(payer) {
+      match manifest[to] {
+        Existing(recipient) {
+          if(((payer.capital-0) >= amount) && ((1000-recipient.capital) >= amount)) {
+            payer.capital = payer.capital-amount;
+            recipient.capital = recipient.capital+amount;
+            manifest[from] = payer;
+            manifest[to] = recipient;
+            return True;
+          }
+        }
+        default {}
+      }
+    }
+    default {}
+  }
+  return False;
+}
+function decreaseCapital(id: PartyIndex, amount: Capital) -> Boolean {
+  match manifest[id] {
+    Existing(party) {
+      if (party.capital-0) > amount {
+        party.capital = party.capital-amount;
+        manifest[id] = party;
+        return True;
+      }
+    }
+    default {}
+  }
+  return False;
+}
+
+function increaseCapital(id: PartyIndex, amount: Capital) -> Boolean {
+  match manifest[id] {
+    Existing(party) {
+      if (1000-party.capital) > amount {
+        party.capital = party.capital+amount;
+        manifest[id] = party;
+        return True;
+      }
+    }
+    default {}
+  }
+  return False;
 }
 
 external newParty {
