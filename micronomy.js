@@ -180,13 +180,19 @@ let _basicExtractor = (model, props) => {
   }, {});
 };
 
+let _nodeExtractor = (model, props) => {
+  return {
+    id: model.id.value,
+    capital: model.capital.value
+  };
+};
+
 let _linkExtractor = (model, props) => {
-  let result = _basicExtractor(model, props);
-  result.id = `${model.parent}-${model.child}`;
-  result.source = nodes.findIndex((el, idx, _) => el.id == model.parent.value);
-  result.target = nodes.findIndex((el, idx, _) => el.id == model.child.value);
-  console.log(result);
-  return result;
+  return {
+    id: `${model.parent.value}-${model.child.value}`,
+    source: nodes.findIndex((el, idx, _) => el.id == model.parent.value),
+    target: nodes.findIndex((el, idx, _) => el.id == model.child.value),
+  };
 };
 
 let _nodeAdder = (props) => nodes.push(props);
@@ -199,20 +205,19 @@ let _nodeRemover = (id) => {
 };
 let _linkRemover = (id) => {
   let removable = links.findIndex((el, idx, arr) => (el.id == id));
-  if(removable > -1) { nodes.splice(removable, 1); }
+  if(removable > -1) { links.splice(removable, 1); }
 };
 
 // TODO: remove `model` from `_addToViz` & `removeFromViz`
 let _addToViz = (model, props, extract, add) => add(extract(model, props));
 let _removeFromViz = (model, props, extract, remove) => {
-  remove(extract(model, props).id.value);
+  remove(extract(model, props).id);
 };
 
 // TODO: figure out a computationally less expensive way to sync links + nodes
 let _syncNodes = (present) => {
   nodesMap.clear();
   present.forEach((val, key) => {
-    //console.log("syncing node", key, "with", val);
     nodesMap.set(key, val);
   });
 };
@@ -244,7 +249,6 @@ const _sync = (past, model, name, props, extract, add, remove, match, sync) => {
   let [newIdxs, voidIdxs] = [ [], [] ];
 
   model.vars.get(name).forEach((item, idx) => {
-    console.log(name);
     match(item, idx, details => {
       current.set(idx, details);
       if(!_isInViz(idx, past)) {

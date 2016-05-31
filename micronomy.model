@@ -10,9 +10,6 @@
  * lending or loaning, a party is registered into the ledger and interest is
  * calculated on every term.
  */
-
-// NOTE: currently only supporting parent-child relationships, `equals` is
-// used to indicate equality as in a peer-to-peer relationship.
 type Index: 100..111; // Sloppy alternative for ids
 type Capital: 0..1000;
 
@@ -32,6 +29,7 @@ var blockPartyIndex: Boolean;
 var blockRelationshipIndex: Boolean;
 
 type Amount: 0..10;
+
 type Party : either {
   Nonexisting,
   Existing {
@@ -46,13 +44,17 @@ type Relationship : either {
     parent: PartyIndex,
     child: PartyIndex,
   }
-}
+};
 
-//type NetworkIndex: 0..10;
-var oldNetwork: Vector<Relationship>[NetworkIndex];
-var testNetwork: Set<Relationship>[0..10];
+type Message : either {
+  OfferRequest {
+    amount: Amount,
+    value: Capital,
+    relationship: RelationshipIndex,
+  }
+};
 
-type Offer: record { source: Party, amount: Amount, value: Capital };
+type Offer: record { source: PartyIndex, amount: Amount, value: Capital };
 //type Bid: record { source: Party, amount: Amount, value: Capital };
 
 type LedgerIndex: 0..10;
@@ -62,63 +64,20 @@ type OfferLedgerIndex: LedgerIndex;
 var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
 //var currentBidLedger: Vector<Bid>[BidLedgerIndex];
 
-type Message : either {
-  Init {},
-  AddParty {
-    party: Party,
-  },
-  RemoveParty {
-    party: Party,
-  },
-  AddRelationship {
-    relationship: Relationship,
-  },
-  RemoveRelationship {
-    relationship: Relationship,
-  },
-  Nothing {},
-}
-
 var parties: Vector<Party>[PartyIndex];
 
 var manifest : Array<Party>[PartyIndex];
 var network : Array<Relationship>[RelationshipIndex];
-var message : Message;
 var iteration : 0..100;
-
-/*
-rule mutateHierarchy {
-  match message {
-    Init(p) {
-      setupInitialNetwork();
-    }
-    AddParty(p) {
-      push(parties, p.party);
-    }
-    RemoveParty(p) {
-      remove(parties, p.party);
-    }
-    AddRelationship(r) {
-      push(oldNetwork, r.relationship);
-    }
-    RemoveRelationship(r) {
-      remove(oldNetwork, r.relationship);
-    }
-    default {}
-  }
-  message = Nothing {};
-}
-*/
 
 rule iterate {
   iteration = (iteration + 1) % 100;
 }
 
-/*
-external request for party in parties {
+external makeOffer for party in manifest {
   match party {
-    Party(props) {
-      push(currentOfferLedger, Offer { source: party, amount: 1, value: 10 });
+    Existing(props) {
+      push(currentOfferLedger, Offer { source: props.id, amount: 1, value: 10 });
     }
     default {}
   }
@@ -126,16 +85,26 @@ external request for party in parties {
 
 rule resolveNearbyOffer for offer in currentOfferLedger {
   for relation in network {
-    if relation.child == offer.source {
-      if relation.parent.capital > offer.value {
-        remove(currentOfferLedger, offer);
-        relation.parent.capital = relation.parent.capital - offer.value;
-        relation.child.capital = relation.child.capital + offer.value;
+    match relation {
+      Unidirectional(rel) {
+        if rel.child == offer.source {
+          match manifest[rel.parent] {
+            Existing(party) {
+              if party.capital > offer.value {
+                push(loggingVector, 21);
+                remove(currentOfferLedger, offer);
+                //decreaseCapital(rel.child, offer.value);
+                //increaseCapital(rel.parent, offer.value);
+              }
+            }
+            default {}
+          }
+        }
       }
+      default {}
     }
   }
 }
-*/
 
 function setupInitialNetwork() {
   addParty(generatePartyIndex(), 100);
@@ -203,6 +172,10 @@ function generateRelationshipIndex() -> Index {
   var tempIndex: Index = nextRelationshipIndex;
   nextRelationshipIndex+=1;
   return tempIndex;
+}
+
+function changeCapital(id: PartyIndex, amount: Capital) -> Boolean {
+  //
 }
 
 external newParty {
