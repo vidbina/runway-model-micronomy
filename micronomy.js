@@ -42,7 +42,6 @@ let View = function(controller, svg, module) {
   };
 
   const _edgeLength = (_e) => {
-    console.log(_e);
     return 24;
     //return _nodeSizeCalculator()*3;
   };
@@ -57,16 +56,9 @@ let View = function(controller, svg, module) {
     .links(links)
     .linkDistance(_edgeLength);
 
-  let link = svg.selectAll('.link')
-    .data(links)
-    .enter().append('line')
-    .attr('class', 'edge')
-    .style(style.link);
-
-  let node = svg.selectAll('.node');
+  let [link, node] = [svg.selectAll('.link'), svg.selectAll('.node')];
 
   let _start = () => {
-    console.log('nodes', force.nodes());
     node = node.data(force.nodes());
     node.enter().append('circle')
       .attr('class', 'node')
@@ -74,6 +66,13 @@ let View = function(controller, svg, module) {
       .style(style.node)
       .call(force.drag);
     node.exit().remove();
+
+    link = link.data(force.links());
+    link.enter().append('line')
+      .attr('class', 'edge')
+      .style(style.link);
+    link.exit().remove();
+
     force.start();
   };
 
@@ -132,14 +131,16 @@ let View = function(controller, svg, module) {
         model, 'parties', ['id', 'capital'],
         _basicExtractor,
         _nodeAdder, _nodeRemover,
-        _syncFormerToCurrent);
+        _syncNodes
+      );
 
       _sync(
-        _nodeMapGetter,
-        model, 'network', ['parent', 'child'],
-        _basicExtractor,
-        _nodeAdder, _nodeRemover,
-        _syncFormerToCurrent);
+        _linksMapGetter,
+        model, 'network', ['id', 'parent', 'child'],
+        _linkExtractor,
+        _linkAdder, _linkRemover,
+        _syncLinks
+      );
 
       _start();
     }
@@ -167,10 +168,9 @@ let [links, linksMap] = [ [], new Map() ];
 let [nodes, nodesMap] = [ [], new Map() ];
 
 let _nodeMapGetter = () => nodesMap;
+let _linksMapGetter = () => linksMap;
 
-let _isInViz = (idx, getVizMap) => {
-  return getVizMap().has(idx);
-};
+let _isInViz = (idx, getVizMap) => getVizMap().has(idx);
 
 let _basicExtractor = (model, props) => {
   return props.reduce((acc, val, i, arr) => {
@@ -178,52 +178,67 @@ let _basicExtractor = (model, props) => {
   }, {});
 };
 
-let _nodeAdder = (props) => {
-  return nodes.push(props);
+let _linkExtractor = (model, props) => {
+  let result = _basicExtractor(model, props);
+  result.id = `${model.parent.id}-${model.child.id}`;
+  result.source = nodes.findIndex((el, idx, _) => el.id == model.parent.id);
+  result.target = nodes.findIndex((el, idx, _) => el.id == model.child.id);
+  return result;
 };
 
+let _nodeAdder = (props) => nodes.push(props);
+let _linkAdder = (props) => links.push(props);
+
+// TODO: Figure out if I can use generators to simplify this
 let _nodeRemover = (id) => {
-  let removable = nodes.findIndex((el, idx, arr) => {
-    return (el.id == id);
-  });
-  nodes.splice(removable, 1);
+  let removable = nodes.findIndex((el, idx, arr) => el.id == id);
+  if(removable > -1) { nodes.splice(removable, 1); }
 };
-
-let _basicRebalancer = (present, alive) => {
-  present.map(present => {
-  });
+let _linkRemover = (id) => {
+  let removable = links.findIndex((el, idx, arr) => (el.id == id));
+  if(removable > -1) { nodes.splice(removable, 1); }
 };
 
 // TODO: remove `model` from `_addToViz` & `removeFromViz`
 let _addToViz = (model, props, extract, add) => add(extract(model, props));
 let _removeFromViz = (model, props, extract, remove) => remove(extract(model, props).id);
 
-let _syncFormerToCurrent = (present) => {
+// TODO: figure out a computationally less expensive way to sync links + nodes
+let _syncNodes = (present) => {
   nodesMap.clear();
   present.forEach((val, key) => {
     nodesMap.set(key, val);
   });
 };
 
+let _syncLinks = (present) => { // syncing the linksMap to the present values
+  linksMap.clear();
+  present.forEach((val, key) => {
+    linksMap.set(key, val);
+  });
+};
+
+var once = true;
+// TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
 const _sync = (past, model, name, props, extract, add, remove, sync) => {
-  let present = new Map(); // TODO: rename to current
+  let current = new Map();
   let newIdxs = model.vars.get(name).toJSON().map(item => {
     let [idx, model] = item;
-    present.set(model.id, extract(model, props));
+    let temp = extract(model, props);
+    current.set(temp['id'], temp); // compose id for link model
     if(!_isInViz(model.id, past)) {
       return _addToViz(model, props, extract, add);
     }
   });
 
   let voidIdxs = new Map([...past()].filter(([k, v]) => {
-    if(present.has(k)) { return false; }
+    if(current.has(k)) { return false; }
     _removeFromViz(v, props, extract, remove);
     return true;
   }));
 
   // TODO: do whatever else you need with newIdxs and voidIdxs
-
-  sync(present);
+  sync(current);
 };
 
 module.exports = View;
