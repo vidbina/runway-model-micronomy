@@ -13,32 +13,46 @@
 
 // NOTE: currently only supporting parent-child relationships, `equals` is
 // used to indicate equality as in a peer-to-peer relationship.
-type Id: 111111..999999; // Sloppy alternative for ids
+type Index: 100..111; // Sloppy alternative for ids
 type Capital: 0..1000;
 
 type Code : 1..100;
 var loggingVector: Vector<Code>[1..100];
 
-var nextId: Id;
+var nextIndex: Index;
+var nextPartyIndex: Index;
+var nextRelationshipIndex: Index;
+
 var idBlock: Boolean;
+var blockPartyIndex: Boolean;
+var blockRelationshipIndex: Boolean;
 
 type Amount: 0..10;
-type Party: record { id: Id, capital: Capital };
+type Party : either {
+  Empty,
+  Existing {
+    id: Index,
+    capital: Capital
+  },
+};
+
+type PartyIndex: Index;
+type NetworkIndex: Index;
 
 type Relationship: record { parent: Party, child: Party, equals: Boolean };
 
-type NetworkIndex: 0..10;
+//type NetworkIndex: 0..10;
 var network: Vector<Relationship>[NetworkIndex];
 var testNetwork: Set<Relationship>[0..10];
 
-//type Offer: record { source: Party, amount: Amount, value: Capital };
+type Offer: record { source: Party, amount: Amount, value: Capital };
 //type Bid: record { source: Party, amount: Amount, value: Capital };
 
-//type LedgerIndex: 0..10;
-//type OfferLedgerIndex: LedgerIndex;
+type LedgerIndex: 0..10;
+type OfferLedgerIndex: LedgerIndex;
 //type BidLedgerIndex: LedgerIndex;
 
-//var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
+var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
 //var currentBidLedger: Vector<Bid>[BidLedgerIndex];
 
 type Message : either {
@@ -58,10 +72,10 @@ type Message : either {
   Nothing {},
 }
 
-type PartyIndex: 0..10;
-
 var parties: Vector<Party>[PartyIndex];
+var manifest : Array<Party>[Index];
 var message : Message;
+var iteration : 0..100;
 
 rule mutateHierarchy {
   match message {
@@ -85,24 +99,96 @@ rule mutateHierarchy {
   message = Nothing {};
 }
 
-function generateId() -> Id {
-  var tempId: Id;
-  tempId = nextId;
-  nextId+=1;
-  return tempId;
+rule iterate {
+  iteration = (iteration + 1) % 100;
+}
+/*
+external request for party in parties {
+  match party {
+    Party(props) {
+      push(currentOfferLedger, Offer { source: party, amount: 1, value: 10 });
+    }
+    default {}
+  }
 }
 
+rule resolveNearbyOffer for offer in currentOfferLedger {
+  for relation in network {
+    if relation.child == offer.source {
+      if relation.parent.capital > offer.value {
+        remove(currentOfferLedger, offer);
+        relation.parent.capital = relation.parent.capital - offer.value;
+        relation.child.capital = relation.child.capital + offer.value;
+      }
+    }
+  }
+}
+*/
+
 function setupInitialNetwork() {
-  push(parties, Party{id: generateId(), capital: 100});
-  push(parties, Party{id: generateId(), capital:  50});
-  push(parties, Party{id: generateId(), capital: 200});
-  push(parties, Party{id: generateId(), capital: 200});
-  push(parties, Party{id: generateId(), capital: 300});
-  push(parties, Party{id: generateId(), capital:  10});
+  addParty(generatePartyIndex(), 100);
+  addParty(generatePartyIndex(),  50);
+  addParty(generatePartyIndex(),  30);
+  addParty(generatePartyIndex(),  10);
+  addParty(generatePartyIndex(),   1);
+/*
+  push(parties, Party{id: generateIndex(), capital: 100});
+  push(parties, Party{id: generateIndex(), capital:  50});
+  push(parties, Party{id: generateIndex(), capital: 200});
+  push(parties, Party{id: generateIndex(), capital: 200});
+  push(parties, Party{id: generateIndex(), capital: 300});
+  push(parties, Party{id: generateIndex(), capital:  10});
 
   push(network, Relationship{parent: parties[0], child: parties[1]});
   push(network, Relationship{parent: parties[1], child: parties[2]});
   push(network, Relationship{parent: parties[1], child: parties[3]});
   push(network, Relationship{parent: parties[0], child: parties[4]});
   push(network, Relationship{parent: parties[4], child: parties[5]});
+  */
+}
+
+function addParty(id: PartyIndex, capital: Capital) {
+  manifest[id] = Existing { id: id, capital: capital };
+}
+
+function createParty(capital: Capital) {
+  var generatedIndex : PartyIndex = generatePartyIndex();
+  manifest[generatedIndex] = Existing { id: generatedIndex, capital: capital };
+}
+
+function deleteParty(id: PartyIndex) {
+  manifest[id] = Empty;
+}
+
+function generateIndex() -> Index {
+  var tempIndex: Index;
+  tempIndex = nextIndex;
+  nextIndex+=1;
+  return tempIndex;
+}
+
+function generatePartyIndex() -> Index {
+  var tempIndex: Index = nextPartyIndex;
+  // TODO: check if next index exists and return EmptyIndex otherwise
+  nextPartyIndex+=1;
+  return tempIndex;
+}
+
+function generateRelationshipIndex() -> Index {
+  var tempIndex: Index = nextRelationshipIndex;
+  nextRelationshipIndex+=1;
+  return tempIndex;
+}
+
+external removeParty for party in manifest {
+  match party {
+    Existing(props) {
+      deleteParty(props.id);
+    }
+    default {}
+  }
+}
+
+external createParty {
+  createParty(20);
 }

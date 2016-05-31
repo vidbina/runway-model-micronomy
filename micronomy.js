@@ -128,7 +128,7 @@ let View = function(controller, svg, module) {
     update: () => {
       _sync(
         _nodeMapGetter,
-        model, 'parties', ['id', 'capital'],
+        model, 'manifest', ['id', 'capital'],
         _basicExtractor,
         _nodeAdder, _nodeRemover,
         _syncNodes
@@ -201,12 +201,15 @@ let _linkRemover = (id) => {
 
 // TODO: remove `model` from `_addToViz` & `removeFromViz`
 let _addToViz = (model, props, extract, add) => add(extract(model, props));
-let _removeFromViz = (model, props, extract, remove) => remove(extract(model, props).id);
+let _removeFromViz = (model, props, extract, remove) => {
+  remove(extract(model, props).id.value);
+};
 
 // TODO: figure out a computationally less expensive way to sync links + nodes
 let _syncNodes = (present) => {
   nodesMap.clear();
   present.forEach((val, key) => {
+    //console.log("syncing node", key, "with", val);
     nodesMap.set(key, val);
   });
 };
@@ -218,27 +221,35 @@ let _syncLinks = (present) => { // syncing the linksMap to the present values
   });
 };
 
-var once = true;
 // TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
 const _sync = (past, model, name, props, extract, add, remove, sync) => {
   let current = new Map();
-  let newIdxs = model.vars.get(name).toJSON().map(item => {
-    let [idx, model] = item;
-    let temp = extract(model, props);
-    current.set(temp['id'], temp); // compose id for link model
-    if(!_isInViz(model.id, past)) {
-      return _addToViz(model, props, extract, add);
-    }
+  let [newIdxs, voidIdxs] = [ [], [] ];
+
+  model.vars.get(name).forEach((item, idx) => {
+    item.match({
+      Empty: undefined,
+      Existing: details => {
+        current.set(idx, details);
+        if(!_isInViz(idx, past)) {
+          newIdxs.push(idx);
+          return _addToViz(details, props, extract, add);
+        }
+      },
+    });
   });
 
-  let voidIdxs = new Map([...past()].filter(([k, v]) => {
-    if(current.has(k)) { return false; }
-    _removeFromViz(v, props, extract, remove);
+  [...past()].filter(([idx, details]) => {
+    if(current.has(idx)) { return false; }
+    voidIdxs.push(idx);
+    _removeFromViz(details, props, extract, remove);
     return true;
-  }));
+  });
 
   // TODO: do whatever else you need with newIdxs and voidIdxs
   sync(current);
+
+  return [newIdxs, voidIdxs];
 };
 
 module.exports = View;
