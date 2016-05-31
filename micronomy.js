@@ -131,14 +131,16 @@ let View = function(controller, svg, module) {
         model, 'manifest', ['id', 'capital'],
         _basicExtractor,
         _nodeAdder, _nodeRemover,
+        _nodeMatcher,
         _syncNodes
       );
 
       _sync(
         _linksMapGetter,
-        model, 'oldNetwork', ['id', 'parent', 'child'],
+        model, 'network', ['id', 'parent', 'child'],
         _linkExtractor,
         _linkAdder, _linkRemover,
+        _linkMatcher,
         _syncLinks
       );
 
@@ -180,9 +182,10 @@ let _basicExtractor = (model, props) => {
 
 let _linkExtractor = (model, props) => {
   let result = _basicExtractor(model, props);
-  result.id = `${model.parent.id}-${model.child.id}`;
-  result.source = nodes.findIndex((el, idx, _) => el.id == model.parent.id);
-  result.target = nodes.findIndex((el, idx, _) => el.id == model.child.id);
+  result.id = `${model.parent}-${model.child}`;
+  result.source = nodes.findIndex((el, idx, _) => el.id == model.parent.value);
+  result.target = nodes.findIndex((el, idx, _) => el.id == model.child.value);
+  console.log(result);
   return result;
 };
 
@@ -221,21 +224,33 @@ let _syncLinks = (present) => { // syncing the linksMap to the present values
   });
 };
 
+let _nodeMatcher = (item, idx = undefined, cb) => {
+  item.match({
+    Nonexisting: undefined,
+    Existing: cb,
+  });
+};
+
+let _linkMatcher = (item, idx = undefined, cb) => {
+  item.match({
+    Empty: undefined,
+    Unidirectional: cb,
+  });
+};
+
 // TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
-const _sync = (past, model, name, props, extract, add, remove, sync) => {
+const _sync = (past, model, name, props, extract, add, remove, match, sync) => {
   let current = new Map();
   let [newIdxs, voidIdxs] = [ [], [] ];
 
   model.vars.get(name).forEach((item, idx) => {
-    item.match({
-      Nonexisting: undefined,
-      Existing: details => {
-        current.set(idx, details);
-        if(!_isInViz(idx, past)) {
-          newIdxs.push(idx);
-          return _addToViz(details, props, extract, add);
-        }
-      },
+    console.log(name);
+    match(item, idx, details => {
+      current.set(idx, details);
+      if(!_isInViz(idx, past)) {
+        newIdxs.push(idx);
+        return _addToViz(details, props, extract, add);
+      }
     });
   });
 
