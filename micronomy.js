@@ -136,7 +136,7 @@ let View = function(controller, svg, module) {
 
       _sync(
         _linksMapGetter,
-        model, 'network', ['id', 'parent', 'child'],
+        model, 'oldNetwork', ['id', 'parent', 'child'],
         _linkExtractor,
         _linkAdder, _linkRemover,
         _syncLinks
@@ -228,7 +228,7 @@ const _sync = (past, model, name, props, extract, add, remove, sync) => {
 
   model.vars.get(name).forEach((item, idx) => {
     item.match({
-      Empty: undefined,
+      Nonexisting: undefined,
       Existing: details => {
         current.set(idx, details);
         if(!_isInViz(idx, past)) {

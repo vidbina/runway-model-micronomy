@@ -19,9 +19,13 @@ type Capital: 0..1000;
 type Code : 1..100;
 var loggingVector: Vector<Code>[1..100];
 
+type PartyIndex: Index;
+type RelationshipIndex: Index;
+type NetworkIndex: Index;
+
 var nextIndex: Index;
-var nextPartyIndex: Index;
-var nextRelationshipIndex: Index;
+var nextPartyIndex: PartyIndex;
+var nextRelationshipIndex: RelationshipIndex;
 
 var idBlock: Boolean;
 var blockPartyIndex: Boolean;
@@ -29,20 +33,23 @@ var blockRelationshipIndex: Boolean;
 
 type Amount: 0..10;
 type Party : either {
-  Empty,
+  Nonexisting,
   Existing {
     id: Index,
     capital: Capital
   },
 };
 
-type PartyIndex: Index;
-type NetworkIndex: Index;
-
-type Relationship: record { parent: Party, child: Party, equals: Boolean };
+type Relationship : either {
+  Empty,
+  Unidirectional {
+    parent: PartyIndex,
+    child: PartyIndex,
+  }
+}
 
 //type NetworkIndex: 0..10;
-var network: Vector<Relationship>[NetworkIndex];
+var oldNetwork: Vector<Relationship>[NetworkIndex];
 var testNetwork: Set<Relationship>[0..10];
 
 type Offer: record { source: Party, amount: Amount, value: Capital };
@@ -73,7 +80,9 @@ type Message : either {
 }
 
 var parties: Vector<Party>[PartyIndex];
-var manifest : Array<Party>[Index];
+
+var manifest : Array<Party>[PartyIndex];
+var network : Array<Relationship>[RelationshipIndex];
 var message : Message;
 var iteration : 0..100;
 
@@ -89,10 +98,10 @@ rule mutateHierarchy {
       remove(parties, p.party);
     }
     AddRelationship(r) {
-      push(network, r.relationship);
+      push(oldNetwork, r.relationship);
     }
     RemoveRelationship(r) {
-      remove(network, r.relationship);
+      remove(oldNetwork, r.relationship);
     }
     default {}
   }
@@ -139,11 +148,11 @@ function setupInitialNetwork() {
   push(parties, Party{id: generateIndex(), capital: 300});
   push(parties, Party{id: generateIndex(), capital:  10});
 
-  push(network, Relationship{parent: parties[0], child: parties[1]});
-  push(network, Relationship{parent: parties[1], child: parties[2]});
-  push(network, Relationship{parent: parties[1], child: parties[3]});
-  push(network, Relationship{parent: parties[0], child: parties[4]});
-  push(network, Relationship{parent: parties[4], child: parties[5]});
+  push(oldNetwork, Relationship{parent: parties[0], child: parties[1]});
+  push(oldNetwork, Relationship{parent: parties[1], child: parties[2]});
+  push(oldNetwork, Relationship{parent: parties[1], child: parties[3]});
+  push(oldNetwork, Relationship{parent: parties[0], child: parties[4]});
+  push(oldNetwork, Relationship{parent: parties[4], child: parties[5]});
   */
 }
 
@@ -151,13 +160,22 @@ function addParty(id: PartyIndex, capital: Capital) {
   manifest[id] = Existing { id: id, capital: capital };
 }
 
+function addRelationship(id: NetworkIndex, source: PartyIndex, target: PartyIndex) {
+  //network[id] = Existing { id: id, parent: source, child: target };
+}
+
 function createParty(capital: Capital) {
   var generatedIndex : PartyIndex = generatePartyIndex();
   manifest[generatedIndex] = Existing { id: generatedIndex, capital: capital };
 }
 
+function createRelationship(a: PartyIndex, b: PartyIndex) {
+  var generatedIndex : RelationshipIndex = generateRelationshipIndex();
+  network[generatedIndex] = Unidirectional { parent: a, child: b };
+}
+
 function deleteParty(id: PartyIndex) {
-  manifest[id] = Empty;
+  manifest[id] = Nonexisting;
 }
 
 function generateIndex() -> Index {
@@ -189,6 +207,12 @@ external removeParty for party in manifest {
   }
 }
 
-external createParty {
+external newParty {
   createParty(20);
 }
+
+/*
+external createRelationship for aId, a in parties for bId, b in parties {
+  createRelationship(aId, bId);
+}
+*/
