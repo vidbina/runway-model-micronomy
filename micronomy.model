@@ -68,7 +68,9 @@ var parties: Vector<Party>[PartyIndex];
 
 var manifest : Array<Party>[PartyIndex];
 var network : Array<Relationship>[RelationshipIndex];
+
 var iteration : 0..100;
+var countHandledOffers : 0..1000;
 
 rule iterate {
   iteration = (iteration + 1) % 100;
@@ -83,17 +85,18 @@ external makeOffer for party in manifest {
   }
 }
 
-rule resolveNearbyOffer for offer in currentOfferLedger {
+// Perform exchange between child and parent if capital is sufficient
+rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
   for relation in network {
     match relation {
       Unidirectional(rel) {
         if rel.child == offer.source {
           match manifest[rel.parent] {
             Existing(party) {
-              if party.capital > offer.value {
-                push(loggingVector, 21);
+              if party.capital >= offer.value {
                 remove(currentOfferLedger, offer);
                 moveCapital(rel.parent, rel.child, offer.value);
+                countHandledOffers+=1;
               }
             }
             default {}
