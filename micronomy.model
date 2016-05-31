@@ -86,6 +86,7 @@ var network : Array<Relationship>[RelationshipIndex];
 var message : Message;
 var iteration : 0..100;
 
+/*
 rule mutateHierarchy {
   match message {
     Init(p) {
@@ -107,10 +108,12 @@ rule mutateHierarchy {
   }
   message = Nothing {};
 }
+*/
 
 rule iterate {
   iteration = (iteration + 1) % 100;
 }
+
 /*
 external request for party in parties {
   match party {
@@ -161,12 +164,12 @@ function addParty(id: PartyIndex, capital: Capital) {
 }
 
 function addRelationship(id: NetworkIndex, source: PartyIndex, target: PartyIndex) {
-  //network[id] = Existing { id: id, parent: source, child: target };
+  network[id] = Unidirectional { parent: source, child: target };
 }
 
 function createParty(capital: Capital) {
   var generatedIndex : PartyIndex = generatePartyIndex();
-  manifest[generatedIndex] = Existing { id: generatedIndex, capital: capital };
+  addParty(generatedIndex, capital);
 }
 
 function createRelationship(a: PartyIndex, b: PartyIndex) {
@@ -176,6 +179,10 @@ function createRelationship(a: PartyIndex, b: PartyIndex) {
 
 function deleteParty(id: PartyIndex) {
   manifest[id] = Nonexisting;
+}
+
+function deleteRelationship(id: RelationshipIndex) {
+  network[id] = Empty;
 }
 
 function generateIndex() -> Index {
@@ -198,6 +205,10 @@ function generateRelationshipIndex() -> Index {
   return tempIndex;
 }
 
+external newParty {
+  createParty(20);
+}
+
 external removeParty for party in manifest {
   match party {
     Existing(props) {
@@ -207,12 +218,25 @@ external removeParty for party in manifest {
   }
 }
 
-external newParty {
-  createParty(20);
+external newRelationship for a in manifest for b in manifest {
+  match a {
+    Existing(parent) {
+      match b {
+        Existing(child) {
+          createRelationship(parent.id, child.id);
+        }
+        default { }
+      }
+    }
+    default { }
+  }
 }
 
-/*
-external createRelationship for aId, a in parties for bId, b in parties {
-  createRelationship(aId, bId);
+external removeRelationship for relationshipIndex, relationship in network {
+  match relationship {
+    Unidirectional {
+      deleteRelationship(relationshipIndex);
+    }
+    default {}
+  }
 }
-*/
