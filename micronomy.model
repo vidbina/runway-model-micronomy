@@ -19,6 +19,7 @@ var loggingVector: Vector<Code>[1..100];
 type PartyIndex: Index;
 type RelationshipIndex: Index;
 type NetworkIndex: Index;
+type MessageIndex: Index;
 
 var nextIndex: Index;
 var nextPartyIndex: PartyIndex;
@@ -65,12 +66,15 @@ type Relationship : either {
   }
 };
 
-type Message : either {
+type Message : record {
+  conduit: Relationship
+/*
   OfferRequest {
     amount: Amount,
     value: Capital,
     relationship: RelationshipIndex,
   }
+*/
 };
 
 type Offer: record { source: PartyIndex, amount: Amount, value: Capital };
@@ -87,6 +91,7 @@ var parties: Vector<Party>[PartyIndex];
 
 var manifest : Array<Party>[PartyIndex];
 var network : Array<Relationship>[RelationshipIndex];
+var queue : Vector<Message>[MessageIndex];
 
 var iteration : 0..100;
 var countHandledOffers : 0..1000;
@@ -103,6 +108,27 @@ external makeOffer for party in manifest {
   match party {
     Existing(props) {
       push(currentOfferLedger, Offer { source: props.id, amount: 1, value: 10 });
+    }
+    default {}
+  }
+}
+
+external message for party in manifest {
+  match party {
+    Existing(sender) {
+      push(loggingVector, 12);
+      for relationship in network {
+        match relationship {
+          Unidirectional(rel) {
+            push(loggingVector, 13);
+            if(sender.id == rel.child) {
+              push(loggingVector, 14);
+              push(queue, Message { conduit: relationship });
+            }
+          }
+          default {}
+        }
+      }
     }
     default {}
   }
