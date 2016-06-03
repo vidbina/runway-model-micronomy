@@ -44,7 +44,8 @@ type Name : either {
   Reichstagg,
   P,
   LIS,
-  LandingJobsFest
+  LandingJobsFest,
+  UK
 };
 
 type Party : either {
@@ -159,6 +160,11 @@ function setupInitialNetwork() {
   createRelationship(nPortugal, nLisbon);
   var nLandingFest: PartyIndex = createParty(12, LandingJobsFest);
   createRelationship(nLisbon, nLandingFest);
+
+  var nEurope: PartyIndex = createParty(20, EU);
+  var nUK: PartyIndex = createParty(10, UK);
+  createRelationship(nEurope, nUK);
+  createRelationship(nEurope, nGermany);
 }
 
 function addParty(id: PartyIndex, capital: Capital, name: Name) {
