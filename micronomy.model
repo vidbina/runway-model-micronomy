@@ -10,7 +10,7 @@
  * lending or loaning, a party is registered into the ledger and interest is
  * calculated on every term.
  */
-type Index: 100..111; // Sloppy alternative for ids
+type Index: 100..130; // Sloppy alternative for ids
 type Capital: 0..1000;
 
 type Code : 1..100;
@@ -30,11 +30,29 @@ var blockRelationshipIndex: Boolean;
 
 type Amount: 0..10;
 
+type Name : either {
+  Undefined,
+  EU,
+  DE,
+  BER,
+  MUC,
+  FRA,
+  HAM,
+  KOL,
+  TMH,
+  Garage,
+  Reichstagg,
+  P,
+  LIS,
+  LandingJobsFest
+};
+
 type Party : either {
   Nonexisting,
   Existing {
     id: Index,
-    capital: Capital
+    capital: Capital,
+    name: Name
   },
 };
 
@@ -76,6 +94,10 @@ rule iterate {
   iteration = (iteration + 1) % 100;
 }
 
+external init {
+  setupInitialNetwork();
+}
+
 external makeOffer for party in manifest {
   match party {
     Existing(props) {
@@ -108,39 +130,49 @@ rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
   }
 }
 
+// TODO: figure out if you can use one of the either enums as a type such as
+// taking an argument that is an Existing instead of a Party and then having
+// to match on it.
 function setupInitialNetwork() {
-  addParty(generatePartyIndex(), 100);
-  addParty(generatePartyIndex(),  50);
-  addParty(generatePartyIndex(),  30);
-  addParty(generatePartyIndex(),  10);
-  addParty(generatePartyIndex(),   1);
-/*
-  push(parties, Party{id: generateIndex(), capital: 100});
-  push(parties, Party{id: generateIndex(), capital:  50});
-  push(parties, Party{id: generateIndex(), capital: 200});
-  push(parties, Party{id: generateIndex(), capital: 200});
-  push(parties, Party{id: generateIndex(), capital: 300});
-  push(parties, Party{id: generateIndex(), capital:  10});
+  // Germany
+  var nGermany: PartyIndex = createParty(100, DE);
+  var nBerlin: PartyIndex = createParty( 50, BER);
+  createRelationship(nGermany, nBerlin);
+  var nReich: PartyIndex = createParty(40, Reichstagg);
+  createRelationship(nBerlin, nReich);
+  var nMunich: PartyIndex = createParty(30, MUC);
+  createRelationship(nGermany, nMunich);
+  var nFrankfurt: PartyIndex = createParty(30, FRA);
+  createRelationship(nGermany, nFrankfurt);
+  var nHamburg: PartyIndex = createParty(20, HAM);
+  createRelationship(nGermany, nHamburg);
+  var nKoln: PartyIndex = createParty(20, KOL);
+  createRelationship(nGermany, nKoln);
+  var nTMH : PartyIndex = createParty(40, TMH);
+  createRelationship(nMunich, nTMH);
+  var nTMHGarage: PartyIndex = createParty(20, Garage);
+  createRelationship(nTMH, nTMHGarage);
 
-  push(oldNetwork, Relationship{parent: parties[0], child: parties[1]});
-  push(oldNetwork, Relationship{parent: parties[1], child: parties[2]});
-  push(oldNetwork, Relationship{parent: parties[1], child: parties[3]});
-  push(oldNetwork, Relationship{parent: parties[0], child: parties[4]});
-  push(oldNetwork, Relationship{parent: parties[4], child: parties[5]});
-  */
+  // Portugal
+  var nPortugal: PartyIndex = createParty(10, P);
+  var nLisbon: PartyIndex = createParty(10, LIS);
+  createRelationship(nPortugal, nLisbon);
+  var nLandingFest: PartyIndex = createParty(12, LandingJobsFest);
+  createRelationship(nLisbon, nLandingFest);
 }
 
-function addParty(id: PartyIndex, capital: Capital) {
-  manifest[id] = Existing { id: id, capital: capital };
+function addParty(id: PartyIndex, capital: Capital, name: Name) {
+  manifest[id] = Existing { id: id, capital: capital, name: name };
 }
 
 function addRelationship(id: NetworkIndex, source: PartyIndex, target: PartyIndex) {
   network[id] = Unidirectional { parent: source, child: target };
 }
 
-function createParty(capital: Capital) {
+function createParty(capital: Capital, name: Name) -> PartyIndex {
   var generatedIndex : PartyIndex = generatePartyIndex();
-  addParty(generatedIndex, capital);
+  addParty(generatedIndex, capital, name);
+  return generatedIndex;
 }
 
 function createRelationship(a: PartyIndex, b: PartyIndex) {
@@ -225,7 +257,7 @@ function increaseCapital(id: PartyIndex, amount: Capital) -> Boolean {
 }
 
 external newParty {
-  createParty(20);
+  createParty(20, Name{});
 }
 
 external removeParty for party in manifest {
