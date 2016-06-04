@@ -31,7 +31,19 @@ let View = function(controller, svg, module) {
     })
     .classed('micronomy', true);
 
-  svg.append('g').attr('id', 'experiment');
+  let rect  = svg.append('rect')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('fill', 'gray');
+
+  let canvas = svg.append('g');
+
+  canvas.style({'background': 'red', 'border': '2px solid blue'})
+    .attr('id', 'experiment');
+
+  rect.call(d3.behavior.zoom().scaleExtent([0.2,2]).on('zoom', zoom(canvas)));
+
+  let viz = canvas.append('g');
 
   let model = module.env;
 
@@ -56,7 +68,7 @@ let View = function(controller, svg, module) {
     .links(links)
     .linkDistance(_edgeLength);
 
-  let [link, node] = [svg.selectAll('.link'), svg.selectAll('.node')];
+  let [link, node] = [viz.selectAll('.link'), viz.selectAll('.node')];
 
   let _start = () => {
     node = node.data(force.nodes());
@@ -76,7 +88,7 @@ let View = function(controller, svg, module) {
     force.start();
   };
 
-  let message = svg.selectAll('.messages')
+  let message = viz.selectAll('.messages')
     .data(messages)
     .enter().append('circle')
     .attr('r', _messageSize)
@@ -184,7 +196,7 @@ let _nodeExtractor = (model, props) => {
   return {
     id: model.id.value,
     capital: model.capital.value
-  };
+  }
 };
 
 let _linkExtractor = (model, props) => {
@@ -192,7 +204,7 @@ let _linkExtractor = (model, props) => {
     id: `${model.parent.value}-${model.child.value}`,
     source: nodes.findIndex((el, idx, _) => el.id == model.parent.value),
     target: nodes.findIndex((el, idx, _) => el.id == model.child.value),
-  };
+  }
 };
 
 let _nodeAdder = (props) => nodes.push(props);
@@ -200,6 +212,7 @@ let _linkAdder = (props) => links.push(props);
 
 // TODO: Figure out if I can use generators to simplify this
 let _nodeRemover = (id) => {
+  console.log('removing item with id', id);
   let removable = nodes.findIndex((el, idx, arr) => el.id == id);
   if(removable > -1) { nodes.splice(removable, 1); }
 };
@@ -269,6 +282,13 @@ const _sync = (past, model, name, props, extract, add, remove, match, sync) => {
   sync(current);
 
   return [newIdxs, voidIdxs];
+};
+
+const zoom = (zoomable) => {
+  return () => {
+    let trans = `translate(${d3.event.translate})scale(${d3.event.scale})`;
+    zoomable.attr('transform', trans);
+  }
 };
 
 module.exports = View;
