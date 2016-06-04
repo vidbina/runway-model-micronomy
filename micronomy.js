@@ -212,8 +212,7 @@ let _linkAdder = (props) => links.push(props);
 
 // TODO: Figure out if I can use generators to simplify this
 let _nodeRemover = (id) => {
-  console.log('removing item with id', id);
-  let removable = nodes.findIndex((el, idx, arr) => el.id == id);
+  let removable = nodes.findIndex((el, idx, arr) => el.id == id.value);
   if(removable > -1) { nodes.splice(removable, 1); }
 };
 let _linkRemover = (id) => {
