@@ -176,9 +176,10 @@ function setupInitialNetwork() {
   var nKoln: PartyIndex = createParty(20, KOL);
   createRelationship(nGermany, nKoln);
   var nTMH : PartyIndex = createParty(40, TMH);
-  createRelationship(nMunich, nTMH);
+  var lMunich_TMH: RelationshipIndex = createRelationship(nMunich, nTMH);
   var nTMHGarage: PartyIndex = createParty(20, Garage);
-  createRelationship(nTMH, nTMHGarage);
+  var lTMHTMHGarage: RelationshipIndex = createRelationship(nTMH, nTMHGarage);
+  createMessage(lTMHTMHGarage);
 
   // Portugal
   var nPortugal: PartyIndex = createParty(10, P);
@@ -207,9 +208,14 @@ function createParty(capital: Capital, name: Name) -> PartyIndex {
   return generatedIndex;
 }
 
-function createRelationship(a: PartyIndex, b: PartyIndex) {
+function createRelationship(a: PartyIndex, b: PartyIndex) -> RelationshipIndex {
   var generatedIndex : RelationshipIndex = generateRelationshipIndex();
   network[generatedIndex] = Unidirectional { parent: a, child: b };
+  return generatedIndex;
+}
+
+function createMessage(medium: RelationshipIndex) {
+  push(queue, Message { conduit: network[medium] });
 }
 
 function deleteParty(id: PartyIndex) {
