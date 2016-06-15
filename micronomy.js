@@ -67,9 +67,9 @@ let View = function(controller, svg, module) {
     .linkDistance(_edgeLength);
 
   let [link, node, message] = [
-    svg.selectAll('.link'),
-    svg.selectAll('.node'),
-    svg.selectAll('.message'),
+    viz.selectAll('.link'),
+    viz.selectAll('.node'),
+    viz.selectAll('.message'),
   ];
 
   let _start = () => {
