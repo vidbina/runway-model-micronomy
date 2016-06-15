@@ -27,7 +27,7 @@ let View = function(controller, svg, module) {
     .attr('width', width)
     .attr('height', height)
     .style({
-      'border': '1px solid black',
+      //'border': '1px solbnklack',
     })
     .classed('micronomy', true);
 
@@ -41,13 +41,11 @@ let View = function(controller, svg, module) {
   canvas.style({'background': 'red', 'border': '2px solid blue'})
     .attr('id', 'experiment');
 
-  rect.call(d3.behavior.zoom().scaleExtent([0.2,2]).on('zoom', zoom(canvas)));
-
   let viz = canvas.append('g');
 
-  let model = module.env;
+  rect.call(d3.behavior.zoom().scaleExtent([0.2,2]).on('zoom', zoom(canvas)));
 
-  let messages = [];
+  let model = module.env;
 
   const _nodeSizeCalculator = (d, i, ..._other) => {
     return floor(width, height)/(nodes.length<0?8:nodes.length*5);
@@ -68,9 +66,14 @@ let View = function(controller, svg, module) {
     .links(links)
     .linkDistance(_edgeLength);
 
-  let [link, node] = [viz.selectAll('.link'), viz.selectAll('.node')];
+  let [link, node, message] = [
+    svg.selectAll('.link'),
+    svg.selectAll('.node'),
+    svg.selectAll('.message'),
+  ];
 
   let _start = () => {
+    // TODO: clean up, side-effect writes to node, link, message beyond scope
     node = node.data(force.nodes());
     node.enter().append('circle')
       .attr('class', 'node')
@@ -85,14 +88,15 @@ let View = function(controller, svg, module) {
       .style(style.link);
     link.exit().remove();
 
+    message = message.data(messages);
+    message.enter().append('circle')
+      .attr('r', _nodeSizeCalculator()*2/3)
+      .attr('q', (x) => { console.log('message', x); return 'blank' })
+      .style(style.message);
+    message.exit().remove();
+
     force.start();
   };
-
-  let message = viz.selectAll('.messages')
-    .data(messages)
-    .enter().append('circle')
-    .attr('r', _messageSize)
-    .style(style.message);
 
   force.on('tick', () => {
     node
@@ -109,23 +113,15 @@ let View = function(controller, svg, module) {
 
     message
       .attr('cx', function(d) {
-        if (messages[d.id].dir == true) {
-          if(messages[d.id].progress >= 1) { messages[d.id].dir = false; }
-          messages[d.id].progress = messages[d.id].progress+0.1;
-        } else {
-          if(messages[d.id].progress <= 0) {
-            messages[d.id].dir = true;
-            messages[d.id].col = d3.rgb(Math.random()*255, Math.random()*255, Math.random()*255).toString();
-          }
-          messages[d.id].progress = messages[d.id].progress-0.1;
-        }
+        let progress = d.progress ? d.progress : 0;
         let _l = link.data()[d.link];
-        let _x = _l.source.x + (_l.target.x - _l.source.x)*d.progress;
+        let _x = _l.source.x + (_l.target.x - _l.source.x)*progress;
         return(_x);
       })
       .attr('cy', function(d) {
+        let progress = d.progress ? d.progress : 0;
         let _l = link.data()[d.link];
-        let _y = _l.source.y + (_l.target.y - _l.source.y)*d.progress;
+        let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
         return(_y);
       })
       .style('fill', function(d) {
@@ -156,6 +152,15 @@ let View = function(controller, svg, module) {
         _syncLinks
       );
 
+      _sync(
+        _messagesMapGetter,
+        model, 'queue', ['link'],
+        _messageExtractor,
+        _messageAdder, _messageRemover,
+        _messageMatcher,
+        _syncMessages
+      );
+
       _start();
     }
   });
@@ -180,9 +185,11 @@ const floor = (a, b) => {
 
 let [links, linksMap] = [ [], new Map() ];
 let [nodes, nodesMap] = [ [], new Map() ];
+let [messages, messagesMap] = [ [], new Map() ];
 
 let _nodeMapGetter = () => nodesMap;
 let _linksMapGetter = () => linksMap;
+let _messagesMapGetter = () => messagesMap;
 
 let _isInViz = (idx, getVizMap) => getVizMap().has(idx);
 
@@ -200,15 +207,38 @@ let _nodeExtractor = (model, props) => {
 };
 
 let _linkExtractor = (model, props) => {
+  let [parent, child] = [model.conduit.parent, model.conduit.child];
   return {
-    id: `${model.parent.value}-${model.child.value}`,
-    source: nodes.findIndex((el, idx, _) => el.id == model.parent.value),
-    target: nodes.findIndex((el, idx, _) => el.id == model.child.value),
+    id: `${parent.value}-${child.value}`,
+    source: nodes.findIndex((el, idx, _) => el.id == parent.value),
+    target: nodes.findIndex((el, idx, _) => el.id == child.value),
   }
+};
+
+let _messageExtractor = (model, props) => {
+  let conduit = model.conduit.match({
+    Empty: undefined,
+    Unidirectional: x => x
+  });
+
+  let index= links.findIndex((el, _) => {
+    return el.id == `${conduit.parent.value}-${conduit.child.value}`;
+  });
+
+  return {
+    id: links[index].id,
+    dir: true,
+    link: index,
+    progress: 0.5,
+  };
 };
 
 let _nodeAdder = (props) => nodes.push(props);
 let _linkAdder = (props) => links.push(props);
+let _messageAdder = (props) => {
+  console.log('called adder for', props);
+  messages.push(props);
+}
 
 // TODO: Figure out if I can use generators to simplify this
 let _nodeRemover = (id) => {
@@ -218,6 +248,11 @@ let _nodeRemover = (id) => {
 let _linkRemover = (id) => {
   let removable = links.findIndex((el, idx, arr) => (el.id == id));
   if(removable > -1) { links.splice(removable, 1); }
+};
+let _messageRemover = (id) => {
+  let removable = messages.findIndex((el, idx, arr) => (el.id == id));
+  console.log('gotta remove', removable);
+  if(removable > -1) { messages.splice(removable, 1); }
 };
 
 // TODO: remove `model` from `_addToViz` & `removeFromViz`
@@ -235,9 +270,19 @@ let _syncNodes = (present) => {
 };
 
 let _syncLinks = (present) => { // syncing the linksMap to the present values
+  //console.log('links map', linksMap);
   linksMap.clear();
   present.forEach((val, key) => {
     linksMap.set(key, val);
+  });
+};
+
+let _syncMessages = (present) => {
+  //console.log('msg map', messagesMap);
+  messagesMap.clear();
+  present.forEach((val, key) => {
+    console.log('value to set to map', val);
+    messagesMap.set(key, val);
   });
 };
 
@@ -251,8 +296,25 @@ let _nodeMatcher = (item, idx = undefined, cb) => {
 let _linkMatcher = (item, idx = undefined, cb) => {
   item.match({
     Empty: undefined,
-    Unidirectional: cb,
+    Unidirectional: x => {
+      cb({
+        id: 100,
+        conduit: x
+      });
+    },
   });
+};
+
+let _messageMatcher = (item, idx = undefined, cb) => {
+  console.log('--------------------------------------');
+  console.log('details are', item);
+  /*
+  item.conduit.match({
+    Unidirectional: cb
+  });
+  */
+  cb(item);
+  console.log('||||||||||||||||||||||||||||||||||||||');
 };
 
 // TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
