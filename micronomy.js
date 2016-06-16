@@ -21,8 +21,8 @@ const style = {
 
 // feature calculators
 const _nodeColor = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
-const _nodeSize= (w, h, n) => _ => floor(w, h)/(n.length<0?8:n.length*5);
-const _edgeLength = _ => 24;
+const _nodeSize= (w, h, n) => _ => 5; //floor(w, h)/(n.length<0?8:n.length*5);
+const _edgeLength = _ => 25;
 const _msgSize = (w, h, n) => _nodeSize(w, h, n)()*2/3;
 
 let View = function(controller, svg, module) {
