@@ -66,8 +66,10 @@ type Relationship : either {
   }
 };
 
+type MessagePath : Vector<Relationship>[0..10];
+
 type Message : record {
-  conduit: Relationship
+  conduit: Relationship,
 /*
   OfferRequest {
     amount: Amount,
@@ -75,6 +77,7 @@ type Message : record {
     relationship: RelationshipIndex,
   }
 */
+  history: MessagePath
 };
 
 type Offer: record { source: PartyIndex, amount: Amount, value: Capital };
@@ -146,6 +149,29 @@ rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
                 remove(currentOfferLedger, offer);
                 moveCapital(rel.parent, rel.child, offer.value);
                 countHandledOffers+=1;
+              }
+            }
+            default {}
+          }
+        }
+      }
+      default {}
+    }
+  }
+}
+
+rule relayMessageOnce {
+  for message in queue {
+    remove(queue, message);
+    match message.conduit {
+      Unidirectional(active) {
+        for relationship in network {
+          match relationship {
+            Unidirectional(candidate) {
+              if active.parent == candidate.child {
+                var history : MessagePath = message.history;
+                push(history, active);
+                push(queue, Message { conduit: candidate, history: history });
               }
             }
             default {}

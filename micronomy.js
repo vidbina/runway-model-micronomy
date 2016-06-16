@@ -19,7 +19,11 @@ const style = {
   }
 };
 
-const rgbNodeCalc = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
+// feature calculators
+const _nodeColor = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
+const _nodeSize= (w, h, n) => _ => floor(w, h)/(n.length<0?8:n.length*5);
+const _edgeLength = _ => 24;
+const _msgSize = (w, h, n) => _nodeSize(w, h, n)()*2/3;
 
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
@@ -28,13 +32,10 @@ let View = function(controller, svg, module) {
     .attr('preserveAspectRatio', 'xMinYMin meet')
     .attr('width', width)
     .attr('height', height)
-    .style({
-      //'border': '1px solbnklack',
-    })
     .classed('micronomy', true);
 
   let rect  = svg.append('rect')
-    .attr('width', width)
+    .attr('width', 2*width)
     .attr('height', height)
     .attr('fill', 'gray');
 
@@ -48,19 +49,6 @@ let View = function(controller, svg, module) {
   rect.call(d3.behavior.zoom().scaleExtent([0.2,2]).on('zoom', zoom(canvas)));
 
   let model = module.env;
-
-  const _nodeSizeCalculator = (d, i, ..._other) => {
-    return floor(width, height)/(nodes.length<0?8:nodes.length*5);
-  };
-
-  const _edgeLength = (_e) => {
-    return 24;
-    //return _nodeSizeCalculator()*3;
-  };
-
-  const _messageSize = (_m) => {
-    return 10;
-  };
 
   let force = d3.layout.force()
     .size([width/2, height/2])
@@ -79,7 +67,7 @@ let View = function(controller, svg, module) {
     node = node.data(force.nodes());
     node.enter().append('circle')
       .attr('class', 'node')
-      .attr('r', _nodeSizeCalculator)
+      .attr('r', _nodeSize(width, height, nodes))
       .style(style.node)
       .call(force.drag);
     node.exit().remove();
@@ -92,7 +80,7 @@ let View = function(controller, svg, module) {
 
     message = message.data(messages);
     message.enter().append('circle')
-      .attr('r', _nodeSizeCalculator()*2/3)
+      .attr('r', _msgSize(width, height, nodes))
       .attr('q', (x) => { console.log('message', x); return 'blank' })
       .style(style.message);
     message.exit().remove();
@@ -104,8 +92,8 @@ let View = function(controller, svg, module) {
     node
       .attr('cx', function(d) { return d.x; })
       .attr('cy', function(d) { return d.y; })
-      .attr('r', _nodeSizeCalculator)
-      .style('fill', d => d3.rgb(...rgbNodeCalc(d)).toString());
+      .attr('r', _nodeSize(width, height, nodes))
+      .style('fill', d => d3.rgb(..._nodeColor(d)).toString());
 
     link
       .attr('x1', function(d) { return d.source.x; })
@@ -308,15 +296,8 @@ let _linkMatcher = (item, idx = undefined, cb) => {
 };
 
 let _messageMatcher = (item, idx = undefined, cb) => {
-  console.log('--------------------------------------');
   console.log('details are', item);
-  /*
-  item.conduit.match({
-    Unidirectional: cb
-  });
-  */
   cb(item);
-  console.log('||||||||||||||||||||||||||||||||||||||');
 };
 
 // TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
