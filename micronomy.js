@@ -19,6 +19,8 @@ const style = {
   }
 };
 
+const rgbNodeCalc = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
+
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
 
@@ -103,7 +105,7 @@ let View = function(controller, svg, module) {
       .attr('cx', function(d) { return d.x; })
       .attr('cy', function(d) { return d.y; })
       .attr('r', _nodeSizeCalculator)
-      .style('fill', function(d) { return d3.rgb(255-d.y*255/200, (d.x)*255/200, 255-d.x*255/200).toString(); });
+      .style('fill', d => d3.rgb(...rgbNodeCalc(d)).toString());
 
     link
       .attr('x1', function(d) { return d.source.x; })
