@@ -62,6 +62,20 @@ let View = function(controller, svg, module) {
     viz.selectAll('.message'),
   ];
 
+  const posMessageX = d => {
+    let progress = d.progress ? d.progress : 0;
+    let _l = link.data()[d.link];
+    let _x = _l.source.x + (_l.target.x - _l.source.x)*progress;
+    return(_x);
+  };
+
+  const posMessageY = d => {
+    let progress = d.progress ? d.progress : 0;
+    let _l = link.data()[d.link];
+    let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
+    return(_y);
+  };
+
   let _start = () => {
     // TODO: clean up, side-effect writes to node, link, message beyond scope
     node = node.data(force.nodes());
@@ -102,18 +116,11 @@ let View = function(controller, svg, module) {
       .attr('y2', function(d) { return d.target.y; });
 
     message
-      .attr('cx', function(d) {
-        let progress = d.progress ? d.progress : 0;
-        let _l = link.data()[d.link];
-        let _x = _l.source.x + (_l.target.x - _l.source.x)*progress;
-        return(_x);
-      })
-      .attr('cy', function(d) {
-        let progress = d.progress ? d.progress : 0;
-        let _l = link.data()[d.link];
-        let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
-        return(_y);
-      })
+      //.attr('q', d => console.log('   ', d))
+      .attr('cx', posMessageX)
+      .attr('cy', posMessageY)
+      .attr('r', _msgSize(width, height, nodes))
+      .style(style.message)
       .style('fill', function(d) {
         return d.col;
       });
