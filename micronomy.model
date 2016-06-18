@@ -13,7 +13,7 @@
 type Index: 100..130; // Sloppy alternative for ids
 type Capital: 0..1000;
 
-type Code : 1..100;
+type Code : 1..200;
 var loggingVector: Vector<Code>[1..100];
 
 type PartyIndex: Index;
@@ -32,7 +32,7 @@ var blockRelationshipIndex: Boolean;
 type Amount: 0..10;
 
 type Name : either {
-  Undefined,
+  Unnamed,
   EU,
   DE,
   BER,
@@ -142,6 +142,7 @@ external message for party in manifest {
 }
 
 // Perform exchange between child and parent if capital is sufficient
+/*
 rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
   for relation in network {
     match relation {
@@ -163,6 +164,7 @@ rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
     }
   }
 }
+*/
 
 rule relayMessageOnce {
   for message in queue {
@@ -209,6 +211,7 @@ function setupInitialNetwork() {
   var lMunich_TMH: RelationshipIndex = createRelationship(nMunich, nTMH);
   var nTMHGarage: PartyIndex = createParty(20, Garage);
   var lTMHTMHGarage: RelationshipIndex = createRelationship(nTMH, nTMHGarage);
+  createMessage(lTMHTMHGarage);
   createMessage(lTMHTMHGarage);
 
   // Portugal
