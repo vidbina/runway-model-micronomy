@@ -140,13 +140,14 @@ let View = function(controller, svg, module) {
 
   force.start();
 
+  // remember to specify the props for each model that need to be transferred
   return({
     wideView: true,
     update: () => {
       _sync(
         _nodeMapGetter,
-        model, 'manifest', ['id', 'capital'],
-        _basicExtractor,
+        model, 'manifest', ['id', 'capital', 'name'],
+        _nodeExtractor,
         _nodeAdder, () => {}, _nodeRemover,
         _nodeMatcher,
         _syncNodes
@@ -212,8 +213,9 @@ let _basicExtractor = (model, props) => {
 let _nodeExtractor = (model, props) => {
   return {
     id: model.id.value,
-    capital: model.capital.value
-  }
+    capital: model.capital.value,
+    name: model.name.varianttype.name, // TODO: eradicate hack
+  };
 };
 
 let _linkExtractor = (model, props) => {
