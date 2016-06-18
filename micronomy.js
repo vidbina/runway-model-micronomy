@@ -135,7 +135,7 @@ let View = function(controller, svg, module) {
         _nodeMapGetter,
         model, 'manifest', ['id', 'capital'],
         _basicExtractor,
-        _nodeAdder, _nodeRemover,
+        _nodeAdder, () => {}, _nodeRemover,
         _nodeMatcher,
         _syncNodes
       );
@@ -144,16 +144,17 @@ let View = function(controller, svg, module) {
         _linksMapGetter,
         model, 'network', ['id', 'parent', 'child'],
         _linkExtractor,
-        _linkAdder, _linkRemover,
+        _linkAdder, () => {}, _linkRemover,
         _linkMatcher,
         _syncLinks
       );
 
+      messages = [];
       _sync(
         _messagesMapGetter,
         model, 'queue', ['link'],
         _messageExtractor,
-        _messageAdder, _messageRemover,
+        _messageAdder, _messageUpdater, _messageRemover,
         _messageMatcher,
         _syncMessages
       );
@@ -248,14 +249,23 @@ let _linkRemover = (id) => {
 };
 let _messageRemover = (id) => {
   let removable = messages.findIndex((el, idx, arr) => (el.id == id));
-  console.log('gotta remove', removable);
+  //console.log('gotta remove', removable);
   if(removable > -1) { messages.splice(removable, 1); }
 };
 
+//// updaters
+let _messageUpdater = (id, props) => messages.push(props);
+
 // TODO: remove `model` from `_addToViz` & `removeFromViz`
-let _addToViz = (model, props, extract, add) => add(extract(model, props));
+let _addToViz = (model, props, extract, add) => {
+  return add(extract(model, props));
+};
 let _removeFromViz = (model, props, extract, remove) => {
-  remove(extract(model, props).id);
+  return remove(extract(model, props).id);
+};
+let _updateViz = (idx, model, props, extract, update) => {
+  let resource = extract(model, props);
+  return update(resource.id, resource);
 };
 
 // TODO: figure out a computationally less expensive way to sync links + nodes
@@ -303,12 +313,11 @@ let _linkMatcher = (item, idx = undefined, cb) => {
 };
 
 let _messageMatcher = (item, idx = undefined, cb) => {
-  console.log('details are', item);
   cb(item);
 };
 
 // TODO: return newIdxs and voidIdxs and do housekeeping elsewhere?
-const _sync = (past, model, name, props, extract, add, remove, match, sync) => {
+const _sync = (past, model, name, props, extract, add, update, remove, match, sync) => {
   let current = new Map();
   let [newIdxs, voidIdxs] = [ [], [] ];
 
@@ -318,6 +327,8 @@ const _sync = (past, model, name, props, extract, add, remove, match, sync) => {
       if(!_isInViz(idx, past)) {
         newIdxs.push(idx);
         return _addToViz(details, props, extract, add);
+      } else {
+        return _updateViz(idx, details, props, extract, update);
       }
     });
   });
