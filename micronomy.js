@@ -8,6 +8,9 @@ const style = {
     opacity: 0.5,
     'pointer-events': 'none', // prevents messages from block clicks on nodes
   },
+  invisible: {
+    fill: 'none',
+  },
   node: {
     fill: '#ccc',
     stroke: '#000',
@@ -16,7 +19,10 @@ const style = {
   link: {
     stroke: 'black',
     'stroke-width': '1px'
-  }
+  },
+  canvas: {
+    fill: 'gray',
+  },
 };
 
 // feature calculators
@@ -37,16 +43,15 @@ let View = function(controller, svg, module) {
   let rect  = svg.append('rect')
     .attr('width', 2*width)
     .attr('height', height)
-    .attr('fill', 'gray');
+    .style(style.canvas);
 
   let canvas = svg.append('g');
 
-  canvas.style({'background': 'red', 'border': '2px solid blue'})
-    .attr('id', 'experiment');
+  canvas.attr('id', 'experiment');
 
   let viz = canvas.append('g');
 
-  rect.call(d3.behavior.zoom().scaleExtent([0.2,2]).on('zoom', zoom(canvas)));
+  rect.call(d3.behavior.zoom().on('zoom', zoom(canvas)));
 
   let model = module.env;
 
@@ -95,7 +100,6 @@ let View = function(controller, svg, module) {
     message = message.data(messages);
     message.enter().append('circle')
       .attr('r', _msgSize(width, height, nodes))
-      .attr('q', (x) => { console.log('message', x); return 'blank' })
       .style(style.message);
     message.exit().remove();
 
@@ -116,7 +120,6 @@ let View = function(controller, svg, module) {
       .attr('y2', function(d) { return d.target.y; });
 
     message
-      //.attr('q', d => console.log('   ', d))
       .attr('cx', posMessageX)
       .attr('cy', posMessageY)
       .attr('r', _msgSize(width, height, nodes))
@@ -216,10 +219,10 @@ let _linkExtractor = (model, props) => {
 let _messageExtractor = (model, props) => {
   let conduit = model.conduit.match({
     Empty: undefined,
-    Unidirectional: x => x
+    Unidirectional: x => x;
   });
 
-  let index= links.findIndex((el, _) => {
+  let index = links.findIndex((el, _) => {
     return el.id == `${conduit.parent.value}-${conduit.child.value}`;
   });
 
@@ -231,13 +234,13 @@ let _messageExtractor = (model, props) => {
   };
 };
 
+// The following helpers simplify the management of data for the D3 viz
+//// adders
 let _nodeAdder = (props) => nodes.push(props);
 let _linkAdder = (props) => links.push(props);
-let _messageAdder = (props) => {
-  console.log('called adder for', props);
-  messages.push(props);
-}
+let _messageAdder = (props) => messages.push(props);
 
+//// removers
 // TODO: Figure out if I can use generators to simplify this
 let _nodeRemover = (id) => {
   let removable = nodes.findIndex((el, idx, arr) => el.id == id.value);
@@ -285,12 +288,8 @@ let _syncLinks = (present) => { // syncing the linksMap to the present values
 };
 
 let _syncMessages = (present) => {
-  //console.log('msg map', messagesMap);
   messagesMap.clear();
-  present.forEach((val, key) => {
-    console.log('value to set to map', val);
-    messagesMap.set(key, val);
-  });
+  present.forEach((val, key) => messagesMap.set(key, val));
 };
 
 let _nodeMatcher = (item, idx = undefined, cb) => {
