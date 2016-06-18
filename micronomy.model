@@ -103,8 +103,12 @@ rule iterate {
   iteration = (iteration + 1) % 100;
 }
 
+var initialized : Boolean = False;
 external init {
-  setupInitialNetwork();
+  if(!initialized) {
+    setupInitialNetwork();
+    initialized = True;
+  }
 }
 
 external makeOffer for party in manifest {
