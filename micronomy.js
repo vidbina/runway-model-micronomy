@@ -11,14 +11,21 @@ const style = {
   invisible: {
     fill: 'none',
   },
-  node: {
+  circle: {
     fill: '#ccc',
     stroke: '#000',
-    'stroke-width': '1px'
+    'stroke-width': '1px',
+  },
+  rect: {
+    width: '100px',
+    height: '100px',
+    fill: 'blue',
+    stroke: '#000',
+    'stroke-width': '1px',
   },
   link: {
     stroke: 'black',
-    'stroke-width': '1px'
+    'stroke-width': '1px',
   },
   canvas: {
     fill: 'gray',
@@ -28,25 +35,70 @@ const style = {
 // feature calculators
 const _nodeColor = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
 const _nodeSize= (w, h, n) => _ => 5; //floor(w, h)/(n.length<0?8:n.length*5);
+const _nodePositionX = d =>  (d.x || 0)-_nodeWidth(d)/2;
+const _nodePositionY = d => (d.y || 0)-_nodeHeight(d)/2;
+const _nodeWidth = _ => (5 || 0);
+const _nodeHeight = _ => (5 || 0);
+
 const _edgeLength = _ => 25;
+
 const _msgSize = (w, h, n) => _nodeSize(w, h, n)()*2/3;
+const _msgPositionX = link => d => {
+  let progress = d.progress ? d.progress : 0;
+  let _l = link.data()[d.link];
+  let _x = _l.source.x + (_l.target.x - _l.source.x)*progress;
+  return(_x || 0);
+};
+const _msgPositionY = link => d => {
+  let progress = d.progress ? d.progress : 0;
+  let _l = link.data()[d.link];
+  let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
+  if(!_l.source.y) {
+    console.error(`${_l.source.y} + (${_l.target.y} - ${_l.source.y})*${progress}`);
+    console.error(_l);
+  }
+  return(_y || 0);
+};
 
 // renderers
-const _renderNode = (base, width, height, nodes, force) =>
-  base.append('circle')
-  .attr('class', 'node')
-  .attr('r', _nodeSize(width, height, nodes))
-  .style(style.node);
+const _renderNode = (el, ...a) => _updateNode(el.append('rect'), ...a);
+const _renderLink = (el, ...a) => _updateLink(el.append('line'), ...a);
+const _renderMessage = (el, ...a) => _updateMessage(el.append('circle'), ...a);
 
-const _renderLink = (base) =>
-  base.append('line')
+// updaters
+const _updateNode = (base, width, height, nodes, force) => {
+  return base
+  .attr('x', _nodePositionX)
+  //.attr('cx', _nodePositionX || 0)
+  .attr('y', _nodePositionY)
+  //.attr('cy', _nodePositionY || 0)
+  .attr('r', _nodeSize(width, height, nodes))
+  .attr('width', _nodeWidth)
+  .attr('height', _nodeHeight)
+  .attr('class', 'node')
+  .style(style.node)
+  .style('fill', d => d3.rgb(..._nodeColor(d)).toString());
+};
+
+const _updateLink = (base) => {
+  return base
+  .attr('x1', function(d) { return d.source.x; })
+  .attr('y1', function(d) { return d.source.y; })
+  .attr('x2', function(d) { return d.target.x; })
+  .attr('y2', function(d) { return d.target.y; })
   .attr('class', 'edge')
   .style(style.link);
+}
 
-const _renderMessage = (base, width, height, nodes) =>
-  base.append('circle')
+const _updateMessage = (base, link, width, height, nodes, force) => {
+  return base
+  .attr('x', _msgPositionX(link) || 0)
+  .attr('cx', _msgPositionX(link) || 0)
+  .attr('y', _msgPositionY(link) || 0)
+  .attr('cy', _msgPositionY(link) || 0)
   .attr('r', _msgSize(width, height, nodes))
   .style(style.message);
+}
 
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
@@ -80,23 +132,9 @@ let View = function(controller, svg, module) {
 
   let [link, node, message] = [
     viz.selectAll('.link'),
-    viz.selectAll('.node'),
+    viz.append('g').selectAll('.node'),
     viz.selectAll('.message'),
   ];
-
-  const posMessageX = d => {
-    let progress = d.progress ? d.progress : 0;
-    let _l = link.data()[d.link];
-    let _x = _l.source.x + (_l.target.x - _l.source.x)*progress;
-    return(_x);
-  };
-
-  const posMessageY = d => {
-    let progress = d.progress ? d.progress : 0;
-    let _l = link.data()[d.link];
-    let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
-    return(_y);
-  };
 
   let _start = () => {
     // TODO: clean up, side-effect writes to node, link, message beyond scope
@@ -109,33 +147,16 @@ let View = function(controller, svg, module) {
     link.exit().remove();
 
     message = message.data(messages);
-    _renderMessage(message.enter(), width, height, nodes);
+    _renderMessage(message.enter(), link, width, height, nodes);
     message.exit().remove();;
 
     force.start();
   };
 
   force.on('tick', () => {
-    node
-      .attr('cx', function(d) { return d.x; })
-      .attr('cy', function(d) { return d.y; })
-      .attr('r', _nodeSize(width, height, nodes))
-      .style('fill', d => d3.rgb(..._nodeColor(d)).toString());
-
-    link
-      .attr('x1', function(d) { return d.source.x; })
-      .attr('y1', function(d) { return d.source.y; })
-      .attr('x2', function(d) { return d.target.x; })
-      .attr('y2', function(d) { return d.target.y; });
-
-    message
-      .attr('cx', posMessageX)
-      .attr('cy', posMessageY)
-      .attr('r', _msgSize(width, height, nodes))
-      .style(style.message)
-      .style('fill', function(d) {
-        return d.col;
-      });
+    _updateNode(node, width, height, nodes, force);
+    _updateLink(link);
+    _updateMessage(message, link, width, height, nodes, force);
   });
 
   force.start();
