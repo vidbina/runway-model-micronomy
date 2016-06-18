@@ -31,6 +31,27 @@ const _nodeSize= (w, h, n) => _ => 5; //floor(w, h)/(n.length<0?8:n.length*5);
 const _edgeLength = _ => 25;
 const _msgSize = (w, h, n) => _nodeSize(w, h, n)()*2/3;
 
+// renderers
+const _renderNode = (base, width, height, nodes, force) => {
+  base.append('circle')
+  .attr('class', 'node')
+  .attr('r', _nodeSize(width, height, nodes))
+  .style(style.node)
+  .call(force.drag);
+};
+
+const _renderLink = (base) => {
+  base.append('line')
+  .attr('class', 'edge')
+  .style(style.link);
+};
+
+const _renderMessage = (base, width, height, nodes) => {
+  base.append('circle')
+  .attr('r', _msgSize(width, height, nodes))
+  .style(style.message);
+};
+
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
 
@@ -84,24 +105,16 @@ let View = function(controller, svg, module) {
   let _start = () => {
     // TODO: clean up, side-effect writes to node, link, message beyond scope
     node = node.data(force.nodes());
-    node.enter().append('circle')
-      .attr('class', 'node')
-      .attr('r', _nodeSize(width, height, nodes))
-      .style(style.node)
-      .call(force.drag);
+    _renderNode(node.enter(), width, height, nodes, force);
     node.exit().remove();
 
     link = link.data(force.links());
-    link.enter().append('line')
-      .attr('class', 'edge')
-      .style(style.link);
+    _renderLink(link.enter());
     link.exit().remove();
 
     message = message.data(messages);
-    message.enter().append('circle')
-      .attr('r', _msgSize(width, height, nodes))
-      .style(style.message);
-    message.exit().remove();
+    _renderMessage(message.enter(), width, height, nodes);
+    message.exit().remove();;
 
     force.start();
   };
