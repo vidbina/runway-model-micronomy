@@ -219,7 +219,7 @@ let _linkExtractor = (model, props) => {
 let _messageExtractor = (model, props) => {
   let conduit = model.conduit.match({
     Empty: undefined,
-    Unidirectional: x => x;
+    Unidirectional: x => x,
   });
 
   let index = links.findIndex((el, _) => {
