@@ -53,9 +53,14 @@ const _msgPositionY = link => d => {
   let progress = d.progress ? d.progress : 0;
   let _l = link.data()[d.link];
   let _y = _l.source.y + (_l.target.y - _l.source.y)*progress;
+  // TODO: figure out why source is sometimes Int as otherwise Object
+  //console.info(`source`, link.data()[d.link].source);
   if(!_l.source.y) {
-    console.error(`${_l.source.y} + (${_l.target.y} - ${_l.source.y})*${progress}`);
-    console.error(_l);
+    // NOTE: There is a situation where source.y is undefined because it's an
+    // Int.
+    //console.error(`${_l.source.y} + (${_l.target.y} - ${_l.source.y})*${progress}`);
+    //console.error(`${_l.source} + (${_l.target} - ${_l.source})*${progress}`);
+    //console.error(_l);
   }
   return(_y || 0);
 };
@@ -69,9 +74,7 @@ const _renderMessage = (el, ...a) => _updateMessage(el.append('circle'), ...a);
 const _updateNode = (base, width, height, nodes, force) => {
   return base
   .attr('x', _nodePositionX)
-  //.attr('cx', _nodePositionX || 0)
   .attr('y', _nodePositionY)
-  //.attr('cy', _nodePositionY || 0)
   .attr('r', _nodeSize(width, height, nodes))
   .attr('width', _nodeWidth)
   .attr('height', _nodeHeight)
@@ -82,10 +85,10 @@ const _updateNode = (base, width, height, nodes, force) => {
 
 const _updateLink = (base) => {
   return base
-  .attr('x1', function(d) { return d.source.x; })
-  .attr('y1', function(d) { return d.source.y; })
-  .attr('x2', function(d) { return d.target.x; })
-  .attr('y2', function(d) { return d.target.y; })
+  .attr('x1', d => d.source.x)
+  .attr('y1', d => d.source.y)
+  .attr('x2', d => d.target.x)
+  .attr('y2', d => d.target.y)
   .attr('class', 'edge')
   .style(style.link);
 }
@@ -109,7 +112,7 @@ let View = function(controller, svg, module) {
     .attr('height', height)
     .classed('micronomy', true);
 
-  let rect  = svg.append('rect')
+  let rect = svg.append('rect')
     .attr('width', 2*width)
     .attr('height', height)
     .style(style.canvas);
@@ -154,9 +157,10 @@ let View = function(controller, svg, module) {
   };
 
   force.on('tick', () => {
-    _updateNode(node, width, height, nodes, force);
+    let args = [width, height, nodes, force];
+    _updateNode(node, ...args);
     _updateLink(link);
-    _updateMessage(message, link, width, height, nodes, force);
+    _updateMessage(message, link, ...args);
   });
 
   force.start();
@@ -241,11 +245,13 @@ let _nodeExtractor = (model, props) => {
 
 let _linkExtractor = (model, props) => {
   let [parent, child] = [model.conduit.parent, model.conduit.child];
-  return {
+  let output = {
     id: `${parent.value}-${child.value}`,
     source: nodes.findIndex((el, idx, _) => el.id == parent.value),
     target: nodes.findIndex((el, idx, _) => el.id == child.value),
-  }
+  };
+  //if(parent.value) { console.info('>', output.source, output.target); }
+  return output;
 };
 
 let _messageExtractor = (model, props) => {
