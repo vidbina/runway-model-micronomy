@@ -11,15 +11,24 @@ const style = {
   invisible: {
     fill: 'none',
   },
+  node: {
+    border: 'blue',
+    'stroke-width': '1px',
+  },
+  label: {
+    font: '4px sans-serif',
+    'pointer-events': 'none',
+    'text-anchor': 'middle',
+  },
   circle: {
     fill: '#ccc',
     stroke: '#000',
     'stroke-width': '1px',
   },
   rect: {
-    width: '100px',
-    height: '100px',
-    fill: 'blue',
+    width: '4px',
+    height: '4px',
+    fill: 'rgb(0, 23, 122, 100)',
     stroke: '#000',
     'stroke-width': '1px',
   },
@@ -37,6 +46,7 @@ const _nodeColor = n => [255-n.y*255/200, (n.x)*255/200, 255-n.x*255/200];
 const _nodeSize= (w, h, n) => _ => 5; //floor(w, h)/(n.length<0?8:n.length*5);
 const _nodePositionX = d =>  (d.x || 0)-_nodeWidth(d)/2;
 const _nodePositionY = d => (d.y || 0)-_nodeHeight(d)/2;
+const _nodeRadius = d => (_nodeWidth(d)+_nodeHeight(d))/2;
 const _nodeWidth = _ => (5 || 0);
 const _nodeHeight = _ => (5 || 0);
 
@@ -66,21 +76,40 @@ const _msgPositionY = link => d => {
 };
 
 // renderers
-const _renderNode = (el, ...a) => _updateNode(el.append('rect'), ...a);
+const _renderNode = (el, ...a) => {
+  let group = el.append('g').attr('class', 'node');
+
+  group.append('circle')
+  .attr('r', _nodeRadius)
+  .attr('cx', d => _nodeRadius(d)/2)
+  .attr('cy', d => _nodeRadius(d)/2)
+  .style(style.circle);
+
+  group.append('text')
+  .attr('x', d => _nodeRadius(d)*2)
+  .attr('y', d => _nodeRadius(d)*2)
+  .text(d => d.name)
+  .style(style.label);
+
+  return _updateNode(group, ...a);
+};
 const _renderLink = (el, ...a) => _updateLink(el.append('line'), ...a);
-const _renderMessage = (el, ...a) => _updateMessage(el.append('circle'), ...a);
+const _renderMessage = (el, ...a) => {
+  let [link, width, height, nodes] = a;
+  let group = el.append('g').attr('class', 'message');
+
+  group.append('circle')
+  .attr('r', _msgSize(width, height, nodes))
+  .style(style.message);
+
+  return _updateMessage(group, ...a);
+}
 
 // updaters
 const _updateNode = (base, width, height, nodes, force) => {
-  return base
-  .attr('x', _nodePositionX)
-  .attr('y', _nodePositionY)
-  .attr('r', _nodeSize(width, height, nodes))
-  .attr('width', _nodeWidth)
-  .attr('height', _nodeHeight)
-  .attr('class', 'node')
-  .style(style.node)
-  .style('fill', d => d3.rgb(..._nodeColor(d)).toString());
+  return base.attr('transform', d => {
+    return `translate(${_nodePositionX(d)},${_nodePositionY(d)})`;
+  });
 };
 
 const _updateLink = (base) => {
@@ -94,14 +123,10 @@ const _updateLink = (base) => {
 }
 
 const _updateMessage = (base, link, width, height, nodes, force) => {
-  return base
-  .attr('x', _msgPositionX(link) || 0)
-  .attr('cx', _msgPositionX(link) || 0)
-  .attr('y', _msgPositionY(link) || 0)
-  .attr('cy', _msgPositionY(link) || 0)
-  .attr('r', _msgSize(width, height, nodes))
-  .style(style.message);
-}
+  return base.attr('transform', d => {
+    return `translate(${_msgPositionX(link)(d)},${_msgPositionY(link)(d)})`;
+  });
+};
 
 let View = function(controller, svg, module) {
   let [width, height] = [200, 200];
