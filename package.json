@@ -1,9 +1,9 @@
 {
   "name": "runway-model-micronomy",
-  "version": "0.0.1",
-  "description": "A pathetic and humoristic simplistic model of a financial system",
+  "version": "0.0.2",
+  "description": "A patheticly inaccurate and simplistic model of an economic system ",
   "keywords": [
-    "runway"
+    "runway", "economy", "simulation"
   ],
   "author": "David Asabina <vid@bina.me>",
   "license": "MIT",

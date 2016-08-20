@@ -1,107 +1,118 @@
 /*
  * Micronomy takes a stab at modelling a financial system in a manner that is
- * probably highly inaccurate and exaggerated.
+ * definitely inaccurate and exaggerated.
  *
- * Company has operations and has a certain burn rate. This burn rate may be
- * more than the company produces, which will require the company to get its
- * resources elsewhere in order to sustain its operations.
+ * Nothing has been modelled other than entities being able to give capital,
+ * to others without questions asked. The only thing this demonstrates is how
+ * messages are relayed through simple networks where messages are just passed
+ * on as-is.
  *
- * Party's have capital and may lend or loan capital to other parties. When
- * lending or loaning, a party is registered into the ledger and interest is
- * calculated on every term.
+ * The hierarchical levels indicate tiers. All entities request resources from
+ * nodes that are upwards in the hierarchy. The intermediate nodes (the ones
+ * with flags) simply receive a message and relay it to all other children in
+ * order to allow peers to respond to the requests (That way a company could
+ * consult parties in its local economy before seeking support elsewhere).
+ * Regardless of the peer's final decision, the message is propagated up the
+ * network.
+ *
+ * At some time, I should model that everything has a burn rate. Hotels just
+ * burn cash, factories produce cash and banks buffer cash while adding magic
+ * chunks to cash deposits. The routing strategies of the intermediate nodes
+ * may need to be expanded too because it is remarkably unintelligent at this
+ * very moment.
  */
-type Index: 100..130; // Sloppy alternative for ids
-type Capital: 0..1000;
-
-type Code : 1..200;
-var loggingVector: Vector<Code>[1..100];
-
-type PartyIndex: Index;
+type Index: 100..120; // Sloppy alternative for ids
+type NodeIndex: Index;
 type RelationshipIndex: Index;
-type NetworkIndex: Index;
 type MessageIndex: Index;
+type Capital: 0..1000;
+type Version: 0..1000;
 
-var nextIndex: Index;
-var nextPartyIndex: PartyIndex;
-var nextRelationshipIndex: RelationshipIndex;
+type NodeName: either {
+  EU, // Europe
+  NL, // The Netherlands
+  DE, // Germany
+  FR, // France
+  ES, // Spain
+  JP, // Japan
+  AE, // United Arab Emirates
+  UK, // United Kingdom
+  CN, // China
+  ID, // Indonesia
+  US, // US
 
-var idBlock: Boolean;
-var blockPartyIndex: Boolean;
-var blockRelationshipIndex: Boolean;
-
-type Amount: 0..10;
-
-type Name : either {
-  Unnamed,
-  EU,
-  DE,
-  BER,
-  MUC,
-  FRA,
-  HAM,
-  KOL,
-  TMH,
-  Garage,
-  Reichstagg,
-  P,
-  LIS,
-  LandingJobsFest,
-  UK
+  Co,
+  Bank,
+  Factory,
+  Hotel,
 };
 
-type Party : either {
+type Payload : either {
+  Blank,
+  Request {
+    source: NodeIndex,
+    amount: Capital,
+  },
+  Response {
+    source: NodeIndex,
+    request: Request,
+    amount: Capital,
+  }
+}
+
+type MessagePath : Vector<RelationshipIndex>[0..10];
+
+type Message : record {
+  history: MessagePath,
+  payload: Payload,
+  direction: either { Up, Down, Both },
+  iteration: Version,
+};
+
+type MessageBuffer : Vector<Message>[MessageIndex];
+type RelationshipList: Set<RelationshipIndex>[0..10];
+
+type Node : either {
   Nonexisting,
   Existing {
     id: Index,
-    capital: Capital,
-    name: Name
+    amount: Capital,           // total amount of capital
+    minimum: Capital,          // minimal amount of capital to maintain
+    transactionLimit: Capital, // limit of any single transaction
+    maximum: Capital,          // maximum holding capacity of asset
+    reserved: Capital,         // capital reserved for outstanding transactons
+    expected: Capital,         // capital expected from outstanding transactions
+    name: NodeName,
+    generator: Boolean,
+    active: Boolean,
+    inbox: MessageBuffer,       // incoming messages mailbox
+    outbox: MessageBuffer,      // outgoing messages mailbox
+    downlink: RelationshipList, // relationships up the hierarchy
+    uplink: RelationshipList,   // relationships down the hierarchy
   },
 };
 
 type Relationship : either {
-  Empty,
+  Unrelated,
   Unidirectional {
-    parent: PartyIndex,
-    child: PartyIndex,
+    parent: NodeIndex,
+    child: NodeIndex,
   }
 };
 
-type MessagePath : Vector<Relationship>[0..10];
+var nextIndex: Index;
+var nextNodeIndex: NodeIndex;
+var nextRelationshipIndex: RelationshipIndex;
 
-type Message : record {
-  conduit: Relationship,
-/*
-  OfferRequest {
-    amount: Amount,
-    value: Capital,
-    relationship: RelationshipIndex,
-  }
-*/
-  history: MessagePath
-};
-
-type Offer: record { source: PartyIndex, amount: Amount, value: Capital };
-//type Bid: record { source: Party, amount: Amount, value: Capital };
-
-type LedgerIndex: 0..10;
-type OfferLedgerIndex: LedgerIndex;
-//type BidLedgerIndex: LedgerIndex;
-
-var currentOfferLedger: Vector<Offer>[OfferLedgerIndex];
-//var currentBidLedger: Vector<Bid>[BidLedgerIndex];
-
-var parties: Vector<Party>[PartyIndex];
-
-var manifest : Array<Party>[PartyIndex];
+var queues : Array<MessageBuffer>[RelationshipIndex];
 var network : Array<Relationship>[RelationshipIndex];
-var queue : Vector<Message>[MessageIndex];
+var manifest : Array<Node>[NodeIndex];
+var responses : Vector<Response>[0..10];
 
-var iteration : 0..100;
-var countHandledOffers : 0..1000;
-
-rule iterate {
-  iteration = (iteration + 1) % 100;
-}
+var z_manifest: Version;
+var z_network: Version;
+var z_queues: Version;
+var z_responses: Version;
 
 var initialized : Boolean = False;
 external init {
@@ -111,152 +122,401 @@ external init {
   }
 }
 
-external makeOffer for party in manifest {
-  match party {
-    Existing(props) {
-      push(currentOfferLedger, Offer { source: props.id, amount: 1, value: 10 });
-    }
-    default {}
-  }
-}
-
-external message for party in manifest {
-  match party {
-    Existing(sender) {
-      push(loggingVector, 12);
-      for relationship in network {
-        match relationship {
-          Unidirectional(rel) {
-            push(loggingVector, 13);
-            if(sender.id == rel.child) {
-              push(loggingVector, 14);
-              push(queue, Message { conduit: relationship });
-            }
-          }
-          default {}
-        }
-      }
-    }
-    default {}
-  }
-}
-
-// Perform exchange between child and parent if capital is sufficient
-/*
-rule resolvePossibleAdjacentTransaction for offer in currentOfferLedger {
-  for relation in network {
-    match relation {
-      Unidirectional(rel) {
-        if rel.child == offer.source {
-          match manifest[rel.parent] {
-            Existing(party) {
-              if party.capital >= offer.value {
-                remove(currentOfferLedger, offer);
-                moveCapital(rel.parent, rel.child, offer.value);
-                countHandledOffers+=1;
-              }
-            }
-            default {}
-          }
-        }
-      }
-      default {}
-    }
-  }
-}
-*/
-
-rule relayMessageOnce {
-  for message in queue {
-    remove(queue, message);
-    match message.conduit {
-      Unidirectional(active) {
-        for relationship in network {
-          match relationship {
-            Unidirectional(candidate) {
-              if active.parent == candidate.child {
-                var history : MessagePath = message.history;
-                push(history, active);
-                push(queue, Message { conduit: candidate, history: history });
-              }
-            }
-            default {}
-          }
-        }
-      }
-      default {}
-    }
-  }
-}
-
-// TODO: figure out if you can use one of the either enums as a type such as
-// taking an argument that is an Existing instead of a Party and then having
-// to match on it.
 function setupInitialNetwork() {
-  // Germany
-  var nGermany: PartyIndex = createParty(100, DE);
-  var nBerlin: PartyIndex = createParty( 50, BER);
-  createRelationship(nGermany, nBerlin);
-  var nReich: PartyIndex = createParty(40, Reichstagg);
-  createRelationship(nBerlin, nReich);
-  var nMunich: PartyIndex = createParty(30, MUC);
-  createRelationship(nGermany, nMunich);
-  var nFrankfurt: PartyIndex = createParty(30, FRA);
-  createRelationship(nGermany, nFrankfurt);
-  var nHamburg: PartyIndex = createParty(20, HAM);
-  createRelationship(nGermany, nHamburg);
-  var nKoln: PartyIndex = createParty(20, KOL);
-  createRelationship(nGermany, nKoln);
-  var nTMH : PartyIndex = createParty(40, TMH);
-  var lMunich_TMH: RelationshipIndex = createRelationship(nMunich, nTMH);
-  var nTMHGarage: PartyIndex = createParty(20, Garage);
-  var lTMHTMHGarage: RelationshipIndex = createRelationship(nTMH, nTMHGarage);
-  createMessage(lTMHTMHGarage);
-  createMessage(lTMHTMHGarage);
+//  var nEU: NodeIndex = createNode(EU, 0, 0, 0, 0);
+//  var nNetherlands: NodeIndex = createNode(NL, 0, 0, 0, 0);
+//  var nGermany: NodeIndex = createNode(DE, 0, 0, 0, 0);
+//  var nGermany1: NodeIndex = createNode(Factory, 0, 0, 02);
+  var nUK: NodeIndex = createNode(UK, 0, 0, 0, 0);
+//  var nIndonesia: NodeIndex = createNode(ID, 0, 0, 0, 0);
+  var nUS : NodeIndex = createNode(US, 0, 0, 0, 0);
+  var nUS1: NodeIndex = createNode(Co, 50, 0, 10, 200);
+  var nUS2: NodeIndex = createNode(Bank, 100, 0, 10, 120);
+  var nUS3: NodeIndex = createNode(Hotel, 40, 0, 2, 80);
+  var nChina: NodeIndex = createNode(CN, 0, 0, 0, 0);
+  var nChina1: NodeIndex = createNode(Co, 50, 0, 10, 200);
+  var nChina2: NodeIndex = createNode(Bank, 100, 0, 10, 200);
+  var nChina3: NodeIndex = createNode(Factory, 150, 0, 10, 200);
+  var nChina4: NodeIndex = createNode(Hotel, 40, 0, 2, 80);
 
-  // Portugal
-  var nPortugal: PartyIndex = createParty(10, P);
-  var nLisbon: PartyIndex = createParty(10, LIS);
-  createRelationship(nPortugal, nLisbon);
-  var nLandingFest: PartyIndex = createParty(12, LandingJobsFest);
-  createRelationship(nLisbon, nLandingFest);
-
-  var nEurope: PartyIndex = createParty(20, EU);
-  var nUK: PartyIndex = createParty(10, UK);
-  createRelationship(nEurope, nUK);
-  createRelationship(nEurope, nGermany);
+//  createRelationship(nEU, nNetherlands);
+//  createRelationship(nEU, nGermany);
+//  createRelationship(nGermany, nGermany1);
+//  createRelationship(nEU, nUK);
+//  createRelationship(nUS, nUK);
+//  createRelationship(nUK, nIndonesia);
+//  createRelationship(nNetherlands, nIndonesia);
+//  createRelationship(nUK, nChina);
+  createRelationship(nUS, nUS1);
+  createRelationship(nUS, nUS2);
+  createRelationship(nUS, nUS3);
+  createRelationship(nUS, nChina);
+  createRelationship(nChina, nChina1);
+  createRelationship(nChina, nChina2);
+  createRelationship(nChina, nChina3);
+  createRelationship(nChina, nChina4);
 }
 
-function addParty(id: PartyIndex, capital: Capital, name: Name) {
-  manifest[id] = Existing { id: id, capital: capital, name: name };
+// mailing
+function addToOutbox(message: Message, owner: RelationshipIndex) -> Boolean {
+  match manifest[owner] {
+    Existing(sender) {
+      if(!full(sender.outbox)) {
+        push(sender.outbox, message);
+        z_manifest = bump(z_manifest);
+        manifest[owner] = sender;
+        return True;
+      }
+    }
+    default {}
+  }
+  return False;
 }
 
-function addRelationship(id: NetworkIndex, source: PartyIndex, target: PartyIndex) {
-  network[id] = Unidirectional { parent: source, child: target };
+function removeFromOutbox(message: Message, owner: RelationshipIndex) {
+  match manifest[owner] {
+    Existing(sender) {
+      remove(sender.outbox, message);
+      z_manifest = bump(z_manifest);
+      manifest[owner] = sender;
+    }
+    default {}
+  }
 }
 
-function createParty(capital: Capital, name: Name) -> PartyIndex {
-  var generatedIndex : PartyIndex = generatePartyIndex();
-  addParty(generatedIndex, capital, name);
+function addToInbox(message: Message, owner: RelationshipIndex) -> Boolean {
+  match manifest[owner] {
+    Existing(receiver) {
+      if(full(receiver.inbox) == True) {
+        return False;
+      } else {
+        push(receiver.inbox, message);
+        manifest[owner] = receiver; // TODO: necessary?
+        z_manifest = bump(z_manifest);
+        return True;
+      }
+    }
+    default {
+      return False;
+    }
+  }
+}
+
+function removeFromInbox(message: Message, owner: RelationshipIndex) {
+  match manifest[owner] {
+    Existing(receiver) {
+      remove(receiver.inbox, message);
+      manifest[owner] = receiver;
+      z_manifest = bump(z_manifest);
+    }
+    default {}
+  }
+}
+
+function placeMessages(nodeId: NodeIndex) {
+  match manifest[nodeId] {
+    Existing(sender) {
+      for message in sender.outbox {
+        var outgoing : Message = message;
+    
+        for uplink in sender.uplink {
+          if(message.direction == Up) {
+            queueMessage(uplink, outgoing);
+          }
+        }
+
+        for downlink in sender.downlink {
+          if(message.direction == Down) {
+            queueMessage(downlink, outgoing);
+          }
+        }
+
+        removeFromOutbox(message, nodeId);
+      }
+    }
+    default {}
+  }
+}
+
+function queueMessage(conduit: RelationshipIndex, message: Message) -> Boolean {
+  if(full(queues[conduit]) == True) {
+    return False;
+  } else {
+    if(contains(message.history, conduit) == True) {
+      return False;
+    } else {
+      push(queues[conduit], message);
+      z_queues = bump(z_queues);
+      return True;
+    }
+  }
+}
+
+function unqueueMessage(recipient: RelationshipIndex, message: Message) -> Boolean {
+  if(remove(queues[recipient], message) == True) {
+    z_queues = bump(z_queues);
+    return True;
+  } else {
+    return False;
+  }
+}
+
+rule send for actorId, actor in manifest {
+  placeMessages(actorId);
+}
+
+rule deliver for relationId, relation in network {
+  for enroute in queues[relationId] {
+    match relation {
+      Unidirectional(link) {
+        // take messages in transit and deliver them to inboxes
+        if(!full(enroute.history)) {
+          var sendable : Message = enroute;
+          push(sendable.history, relationId);
+
+          if (enroute.direction == Down) {
+            addToInbox(sendable, link.child);
+          }
+
+          if (enroute.direction == Up) {
+            addToInbox(sendable, link.parent);
+          }
+
+          unqueueMessage(relationId, enroute);
+        }
+      }
+      default {}
+    }
+  }
+}
+
+rule relay for nodeId, node in manifest {
+  match node {
+    Existing(relayer) {
+      for message in relayer.inbox {
+        if(relayer.maximum == 0) {
+          var sendable : Message = message;
+
+          // TODO: check if request is still active before relaying
+          //if(message.direction == Up && message.iteration < 1) {
+            // relay message
+            if(addToOutbox(sendable, nodeId)) {
+              removeFromInbox(message, nodeId);
+              // also propagate message downwards
+              sendable.iteration = bump(message.iteration);
+              if(sendable.direction == Up) {
+                sendable.direction = Down;
+              } else {
+                sendable.direction = Up;
+              }
+              addToOutbox(sendable, nodeId);
+            }
+          //}
+        }
+      }
+    }
+    default {}
+  }
+}
+
+rule process for nodeId, node in manifest {
+  match node {
+    Existing(processor) {
+      for message in processor.inbox {
+        var sendable : Message = message;
+        if(processor.maximum > 0) {
+          match message.payload {
+            // handle request
+            Request(request) {
+              var available : Capital;
+              var offerable : Capital;
+              var margin : Capital = 20;
+
+              if(processor.amount > processor.reserved) {
+                available = processor.amount-processor.reserved;
+              }
+
+              if(request.amount > available) {
+                if(available > margin) {
+                  offerable = available-margin;
+                }
+              } else {
+                if(available > margin) {
+                  if(request.amount < (available-margin)) {
+                    offerable = request.amount;
+                  } else {
+                    offerable = available-margin;
+                  }
+                }
+              }
+
+              respond(nodeId, request, min(offerable, processor.transactionLimit));
+              removeFromInbox(message, nodeId);
+            }
+            default {}
+          }
+        }
+      }
+    }
+    default {}
+  }
+}
+
+rule settle for response in responses {
+  match manifest[response.source] {
+    Existing(provider) {
+      match manifest[response.request.source] {
+        Existing(requestor) {
+          var consumed : Existing = requestor;
+          var provided : Existing = provider;
+          var processable : Capital = 0;
+
+          if(requestor.maximum>requestor.amount) {
+            if(requestor.maximum-requestor.amount < response.amount) {
+              processable = requestor.maximum-requestor.amount;
+            } else {
+              processable = response.amount;
+            }
+  
+            consumed.amount = requestor.amount + processable;
+            provided.amount = provider.amount - processable;
+            provided.reserved = provider.reserved - response.amount;
+  
+            manifest[response.source] = provided;
+            manifest[response.request.source] = consumed;
+            z_manifest = bump(z_manifest);
+          }
+
+          if(remove(responses, response) == True) {
+            z_responses = bump(z_responses);
+          }
+        }
+        default{}
+      }
+    }
+    default {}
+  }
+}
+
+function respond(responder: NodeIndex, request: Request, amount: Capital) {
+  match manifest[responder] {
+    Existing(actor) {
+      if(!full(responses)) {
+        actor.reserved = actor.reserved+amount;
+        push(responses, Response {
+          source: responder,
+          request: request,
+          amount: amount,
+        });
+        z_responses = bump(z_responses);
+        manifest[responder] = actor;
+      }
+    }
+    default {}
+  }
+}
+
+// externals
+external request for nodeId, node in manifest {
+  match manifest[nodeId] {
+    Existing(requestor) {
+      var processable : Capital = 0;
+      if(requestor.maximum > requestor.amount) {
+        processable = requestor.maximum - requestor.amount;
+        //if(processable > 0) {
+          var message : Message = Message {
+            direction: Up,
+            payload: Request {
+              source: nodeId,
+              amount: processable,
+            }
+          };
+          addToOutbox(message, nodeId);
+        //}
+      }
+    }
+    default {}
+  }
+}
+
+external activate for nodeId, node in manifest {
+  match node {
+    Existing(p) {
+      p.active = True;
+      manifest[nodeId] = p;
+    }
+    default {}
+  }
+}
+
+external deactivate for nodeId, node in manifest {
+  match node {
+    Existing(p) {
+      p.active = False;
+      manifest[nodeId] = p;
+    }
+    default {}
+  }
+}
+
+external fillup for nodeId, node in manifest {
+  match node {
+    Existing(p) {
+      p.amount = p.maximum;
+      manifest[nodeId] = p;
+    }
+    default {}
+  }
+}
+
+// helpers
+function createNode(name: NodeName, amount: Capital, min: Capital, per: Capital, max: Capital) -> NodeIndex {
+  var generatedIndex : NodeIndex = generateNodeIndex();
+  addNode(generatedIndex, amount, min, per, max, name, False, True);
   return generatedIndex;
 }
 
-function createRelationship(a: PartyIndex, b: PartyIndex) -> RelationshipIndex {
-  var generatedIndex : RelationshipIndex = generateRelationshipIndex();
-  network[generatedIndex] = Unidirectional { parent: a, child: b };
-  return generatedIndex;
+function addNode(id: NodeIndex, amount: Capital, min: Capital, per: Capital, max: Capital, name: NodeName, gen: Boolean, active: Boolean) {
+  manifest[id] = Existing { id: id, amount: amount, minimum: min, transactionLimit: per, maximum: max, name: name, generator: gen, active: active};
+  z_manifest = bump(z_manifest);
 }
 
-function createMessage(medium: RelationshipIndex) {
-  push(queue, Message { conduit: network[medium] });
-}
-
-function deleteParty(id: PartyIndex) {
+function removeNode(id: NodeIndex) {
   manifest[id] = Nonexisting;
+  z_manifest = bump(z_manifest);
 }
 
-function deleteRelationship(id: RelationshipIndex) {
-  network[id] = Empty;
+function createRelationship(a: NodeIndex, b: NodeIndex) -> RelationshipIndex {
+  var generatedIndex : RelationshipIndex = generateRelationshipIndex();
+  addRelationship(generatedIndex, a, b);
+  return generatedIndex;
+}
+
+function addRelationship(id: RelationshipIndex, source: NodeIndex, target: NodeIndex) {
+  network[id] = Unidirectional { parent: source, child: target };
+
+  match manifest[source] {
+    Existing(parent) {
+      push(parent.downlink, id);
+      manifest[source] = parent;
+      z_network = bump(z_network);
+    }
+    default {}
+  }
+
+  match manifest[target] {
+    Existing(child) {
+      push(child.uplink, id);
+      manifest[target] = child;
+      z_network = bump(z_network);
+    }
+    default {}
+  }
+}
+
+function removeRelationship(id: RelationshipIndex) {
+  network[id] = Unrelated;
+  z_network = bump(z_network);
 }
 
 function generateIndex() -> Index {
@@ -266,10 +526,10 @@ function generateIndex() -> Index {
   return tempIndex;
 }
 
-function generatePartyIndex() -> Index {
-  var tempIndex: Index = nextPartyIndex;
-  // TODO: check if next index exists and return EmptyIndex otherwise
-  nextPartyIndex+=1;
+function generateNodeIndex() -> Index {
+  var tempIndex: Index = nextNodeIndex;
+  // TODO: check if next index exists and return UnrelatedIndex otherwise
+  nextNodeIndex+=1;
   return tempIndex;
 }
 
@@ -279,86 +539,15 @@ function generateRelationshipIndex() -> Index {
   return tempIndex;
 }
 
-function moveCapital(from: PartyIndex, to: PartyIndex, amount: Capital) -> Boolean {
-  match manifest[from] {
-    Existing(payer) {
-      match manifest[to] {
-        Existing(recipient) {
-          if(((payer.capital-0) >= amount) && ((1000-recipient.capital) >= amount)) {
-            payer.capital = payer.capital-amount;
-            recipient.capital = recipient.capital+amount;
-            manifest[from] = payer;
-            manifest[to] = recipient;
-            return True;
-          }
-        }
-        default {}
-      }
-    }
-    default {}
-  }
-  return False;
-}
-function decreaseCapital(id: PartyIndex, amount: Capital) -> Boolean {
-  match manifest[id] {
-    Existing(party) {
-      if (party.capital-0) > amount {
-        party.capital = party.capital-amount;
-        manifest[id] = party;
-        return True;
-      }
-    }
-    default {}
-  }
-  return False;
+// utils
+function bump(x: Version) -> Version {
+  return((x + 1) % 999);
 }
 
-function increaseCapital(id: PartyIndex, amount: Capital) -> Boolean {
-  match manifest[id] {
-    Existing(party) {
-      if (1000-party.capital) > amount {
-        party.capital = party.capital+amount;
-        manifest[id] = party;
-        return True;
-      }
-    }
-    default {}
-  }
-  return False;
-}
-
-external newParty {
-  createParty(20, Name{});
-}
-
-external removeParty for party in manifest {
-  match party {
-    Existing(props) {
-      deleteParty(props.id);
-    }
-    default {}
-  }
-}
-
-external newRelationship for a in manifest for b in manifest {
-  match a {
-    Existing(parent) {
-      match b {
-        Existing(child) {
-          createRelationship(parent.id, child.id);
-        }
-        default { }
-      }
-    }
-    default { }
-  }
-}
-
-external removeRelationship for relationshipIndex, relationship in network {
-  match relationship {
-    Unidirectional {
-      deleteRelationship(relationshipIndex);
-    }
-    default {}
+function min(a: Capital, b: Capital) -> Capital {
+  if(a > b) {
+    return b;
+  } else {
+    return a;
   }
 }
