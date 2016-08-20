@@ -7,13 +7,27 @@
  * messages are relayed through simple networks where messages are just passed
  * on as-is.
  *
- * The hierarchical levels indicate tiers. All entities request resources from
- * nodes that are upwards in the hierarchy. The intermediate nodes (the ones
- * with flags) simply receive a message and relay it to all other children in
- * order to allow peers to respond to the requests (That way a company could
- * consult parties in its local economy before seeking support elsewhere).
- * Regardless of the peer's final decision, the message is propagated up the
- * network.
+ * All entities request resources from nodes that are upwards in the hierarchy.
+ * Intermediate nodes (the ones with flags) act as relay stations by simply
+ * receiving a message and relay it to all siblings of the sender in order to
+ * allow peers to respond to the requests, while also sending it further
+ * upwards in case the siblings can't deliver. Almost like entities would
+ * consult parties in their local economy before seeking support elsewhere in
+ * the hierarchical maze of an economic system.
+ *
+ * Press [init] to spark a simple network and press play. You initiate a
+ * request for resources by clicking on a terminating node (a bank, hotel,
+ * office or co) and placing a request. Intermediate nodes (the ones with
+ * flags) cannot request * since they are only there to define the
+ * relationships between the real participants of this joke of an economy.
+ * The progress bar to the top-right indicates how much of capital capacity is
+ * utilized. Units that are completely full (100% capital = all green) need no
+ * more capital and will not send messages for any. Try to place requests from
+ * units with red spaces in their capital bars which indicates that there is
+ * ample room to accomodate more capital. That way a request for capital can
+ * be sent and you can explore how units in the local economy respond first
+ * after receiving the requests and gradually the requests finds it way to more
+ * remote entities.
  *
  * At some time, I should model that everything has a burn rate. Hotels just
  * burn cash, factories produce cash and banks buffer cash while adding magic
